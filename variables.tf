@@ -56,6 +56,12 @@ variable "ec2_instance_profile_name" {
   default     = "EC2InstanceProfile"
 }
 
+variable "key_name" {
+  description = "EC2 インスタンスに使用する既存のキーペアの名前"
+  type        = string
+  default     = "vockey"
+}
+
 # 負荷テスト設定
 # 有効にすると、ALB に対して自動的に負荷を生成するテストインスタンスを作成します
 variable "run_load_test" {
@@ -73,13 +79,13 @@ variable "test_instance_type" {
 variable "load_test_concurrency" {
   description = "負荷テストの同時接続数"
   type        = number
-  default     = 100
+  default     = 50
 }
 
 variable "load_test_duration" {
   description = "各負荷テストサイクルの期間 (秒) (0 = 連続)"
   type        = number
-  default     = 300
+  default     = 600
 }
 
 # オートスケーリング設定

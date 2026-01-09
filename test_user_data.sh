@@ -171,7 +171,8 @@ echo "[$(date)] $ALB_URL に対する負荷テストを開始 (CPU 負荷の高�
 echo "[$(date)] 同時接続数: $CONCURRENCY"
 echo "[$(date)] 期間: サイクルあたり $DURATION 秒"
 
-# 継続的な負荷テストの実行
+# Run continuous load test
+sleep 60
 while true; do
     echo "[$(date)] 負荷テストサイクルを実行中..."
 
@@ -181,8 +182,8 @@ while true; do
     # -t: 時間制限 (期間 > 0 の場合)
 
     if [ "$DURATION" -eq 0 ]; then
-        # 連続モード - 無期限に実行
-        ab -n 999999999 -c $CONCURRENCY $ALB_URL || true
+        # 連続モード - メモリ不足を回避するため、長時間（1時間）の時間制限付きで実行し、ループさせる
+        ab -t 3600 -c $CONCURRENCY $ALB_URL || true
     else
         # 時間指定モード - 指定された期間実行
         ab -t $DURATION -c $CONCURRENCY $ALB_URL || true

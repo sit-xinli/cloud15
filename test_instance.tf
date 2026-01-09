@@ -6,7 +6,7 @@
 resource "aws_security_group" "test_instance" {
   count       = var.run_load_test ? 1 : 0
   name        = "${var.project_name}-${var.environment}-test-sg"
-  description = "テスト EC2 インスタンス用セキュリティグループ"
+  description = "Security group for test EC2 instance"
   vpc_id      = aws_vpc.main.id
 
   # 任意の場所からの SSH を許可 (テスト目的のみ)
@@ -15,7 +15,7 @@ resource "aws_security_group" "test_instance" {
     to_port     = 22
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
-    description = "テスト用 SSH アクセス"
+    description = "Allow SSH access for testing"
   }
 
   # 任意の場所からの HTTP を許可
@@ -24,7 +24,7 @@ resource "aws_security_group" "test_instance" {
     to_port     = 80
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
-    description = "テスト用 HTTP アクセス"
+    description = "Allow HTTP access for testing"
   }
 
   # すべての送信トラフィックを許可
@@ -33,7 +33,7 @@ resource "aws_security_group" "test_instance" {
     to_port     = 0
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
-    description = "すべての送信トラフィックを許可"
+    description = "Allow all outbound traffic"
   }
 
   tags = {
@@ -49,6 +49,7 @@ resource "aws_instance" "test" {
   subnet_id              = aws_subnet.public[0].id
   vpc_security_group_ids = [aws_security_group.test_instance[0].id]
   iam_instance_profile   = data.aws_iam_instance_profile.lab_profile.name
+  key_name               = var.key_name
 
   # 直接アクセスのためにパブリック IP を有効化
   associate_public_ip_address = true

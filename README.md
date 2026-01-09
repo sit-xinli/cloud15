@@ -207,6 +207,54 @@ asg_max_size         = 5
 terraform apply
 ```
 
+### 負荷テストの実行
+
+このプロジェクトには、ALB に対して自動的に負荷を生成する専用のテストインスタンスが含まれています。
+
+#### 1. 負荷テストの有効化
+
+`terraform.tfvars` で以下の変数を設定し、変更を適用します。
+
+```hcl
+run_load_test = true
+# オプション: 同時接続数と期間の調整
+load_test_concurrency = 50
+load_test_duration    = 0  # 0 は連続実行
+```
+
+```bash
+terraform apply
+```
+
+#### 2. ダッシュボードへのアクセス
+
+デプロイ後、テストインスタンスのパブリック IP にアクセスして、負荷テストのステータスを確認できます。
+
+```bash
+# テストインスタンスのパブリック IP を取得
+terraform output test_instance_public_ip
+```
+
+ブラウザで `http://<test-instance-ip>` を開きます。
+
+#### 3. 手動制御とモニタリング
+
+テストインスタンスに SSH で接続（または EC2 Instance Connect を使用）して、負荷テストを直接制御できます。
+
+```bash
+# 負荷テストのステータス確認
+sudo systemctl status load-test
+
+# 負荷テストの停止
+sudo systemctl stop load-test
+
+# 負荷テストの開始
+sudo systemctl start load-test
+
+# リアルタイムログの表示
+sudo journalctl -u load-test -f
+```
+
 ### 設定の更新
 
 ```bash

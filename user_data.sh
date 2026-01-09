@@ -100,52 +100,52 @@ cat > /var/www/html/work.php <<'EOF'
 header('Content-Type: text/html; charset=utf-8');
 
 // 設定
-\$iterations = 5000000;  // CPU 作業の反復回数
+$iterations = 5000000;  // CPU 作業の反復回数
 
 // 1. 素数計算 (CPU 負荷が高い)
-function isPrime(\$n) {
-    if (\$n <= 1) return false;
-    if (\$n <= 3) return true;
-    if (\$n % 2 == 0 || \$n % 3 == 0) return false;
-    for (\$i = 5; \$i * \$i <= \$n; \$i += 6) {
-        if (\$n % \$i == 0 || \$n % (\$i + 2) == 0) return false;
+function isPrime($n) {
+    if ($n <= 1) return false;
+    if ($n <= 3) return true;
+    if ($n % 2 == 0 || $n % 3 == 0) return false;
+    for ($i = 5; $i * $i <= $n; $i += 6) {
+        if ($n % $i == 0 || $n % ($i + 2) == 0) return false;
     }
     return true;
 }
 
 // 2. 素数の算出
-\$primes = [];
-for (\$i = 2; \$i < 1000; \$i++) {
-    if (isPrime(\$i)) {
-        \$primes[] = \$i;
+$primes = [];
+for ($i = 2; $i < 1000; $i++) {
+    if (isPrime($i)) {
+        $primes[] = $i;
     }
 }
 
 // 3. 文字列ハッシュ操作
-\$hash_count = 0;
-for (\$i = 0; \$i < \$iterations; \$i++) {
-    md5("load-test-" . \$i);
-    \$hash_count++;
+$hash_count = 0;
+for ($i = 0; $i < $iterations; $i++) {
+    md5("load-test-" . $i);
+    $hash_count++;
 }
 
 // 4. 配列のソート操作
-\$random_array = [];
-for (\$i = 0; \$i < 1000; \$i++) {
-    \$random_array[] = rand(1, 10000);
+$random_array = [];
+for ($i = 0; $i < 1000; $i++) {
+    $random_array[] = rand(1, 10000);
 }
-sort(\$random_array);
+sort($random_array);
 
 // 5. 数学計算
-\$sum = 0;
-for (\$i = 1; \$i <= \$iterations; \$i++) {
-    \$sum += sqrt(\$i) * log(\$i + 1);
+$sum = 0;
+for ($i = 1; $i <= $iterations; $i++) {
+    $sum += sqrt($i) * log($i + 1);
 }
 
 // インスタンスメタデータの取得
-\$instance_id = file_get_contents('http://169.254.169.254/latest/meta-data/instance-id');
-\$az = file_get_contents('http://169.254.169.254/latest/meta-data/placement/availability-zone');
+$instance_id = file_get_contents('http://169.254.169.254/latest/meta-data/instance-id');
+$az = file_get_contents('http://169.254.169.254/latest/meta-data/placement/availability-zone');
 
-// レスポンスを返す
+// Return response
 echo "<!DOCTYPE html>
 <html lang='ja'>
 <head>
@@ -160,16 +160,15 @@ echo "<!DOCTYPE html>
 <body>
     <div class='result'>
         <h2 class='success'>✓ ワークロード処理完了</h2>
-        <p><strong>インスタンス ID:</strong> " . htmlspecialchars(\$instance_id) . "</p>
-        <p><strong>アベイラビリティゾーン:</strong> " . htmlspecialchars(\$az) . "</p>
-        <p><strong>発見された素数:</strong> " . count(\$primes) . "</p>
-        <p><strong>生成されたハッシュ:</strong> " . \$hash_count . "</p>
-        <p><strong>計算結果:</strong> " . number_format(\$sum, 2) . "</p>
+        <p><strong>インスタンス ID:</strong> " . htmlspecialchars($instance_id) . "</p>
+        <p><strong>アベイラビリティゾーン:</strong> " . htmlspecialchars($az) . "</p>
+        <p><strong>発見された素数:</strong> " . count($primes) . "</p>
+        <p><strong>生成されたハッシュ:</strong> " . $hash_count . "</p>
+        <p><strong>計算結果:</strong> " . number_format($sum, 2) . "</p>
         <p><strong>時刻:</strong> " . date('Y-m-d H:i:s') . "</p>
     </div>
 </body>
 </html>";
-?>
 EOF
 
 # 適切な権限の設定

@@ -5,7 +5,7 @@ data "aws_ami" "amazon_linux_2023" {
 
   filter {
     name   = "name"
-    values = ["al2023-ami-*-x86_64"]
+    values = ["al2023-ami-2023*-x86_64"]
   }
 
   filter {
@@ -25,6 +25,7 @@ resource "aws_launch_template" "web" {
   name_prefix   = "${var.project_name}-${var.environment}-web-"
   image_id      = data.aws_ami.amazon_linux_2023.id
   instance_type = var.web_instance_type
+  key_name      = var.key_name
 
   iam_instance_profile {
     name = data.aws_iam_instance_profile.lab_profile.name
