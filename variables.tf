@@ -56,6 +56,7 @@ variable "ec2_instance_profile_name" {
   default     = "EC2InstanceProfile"
 }
 
+
 # Auto Scaling Configuration
 variable "asg_min_size" {
   description = "Minimum number of instances in Auto Scaling Group"
@@ -98,12 +99,6 @@ variable "create_ec2_db" {
   description = "Whether to create MySQL on EC2 instance (AWS Academy blocks this - use install_mysql_on_web instead)"
   type        = bool
   default     = false # AWS Academy blocks direct EC2 creation
-}
-
-variable "install_mysql_on_web" {
-  description = "Install MySQL on web server instances (recommended for AWS Academy)"
-  type        = bool
-  default     = true
 }
 
 variable "db_ec2_instance_type" {

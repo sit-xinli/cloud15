@@ -3,17 +3,15 @@
 
 # Only create if RDS is disabled and EC2 DB is enabled
 resource "aws_instance" "db" {
-  count = var.create_rds ? 0 : var.create_ec2_db ? 1 : 0
+  count = var.create_rds ? 0 : (var.create_ec2_db ? 2 : 0)
 
   ami           = data.aws_ami.amazon_linux_2023.id
   instance_type = var.db_ec2_instance_type
-  subnet_id     = aws_subnet.private[0].id
+  subnet_id     = aws_subnet.private[count.index % length(aws_subnet.private)].id
 
   vpc_security_group_ids = [aws_security_group.rds.id]
 
-  # AWS Academy: Don't use IAM instance profile for DB instance
-  # Database doesn't need AWS API access, only MySQL
-  # iam_instance_profile = data.aws_iam_instance_profile.lab_profile.name
+  iam_instance_profile = data.aws_iam_instance_profile.lab_profile.name
 
   # EBS volume for database storage
   root_block_device {
@@ -30,8 +28,9 @@ resource "aws_instance" "db" {
   }))
 
   tags = {
-    Name = "${var.project_name}-${var.environment}-mysql-ec2"
+    Name = "${var.project_name}-${var.environment}-mysql-ec2-${count.index == 0 ? "primary" : "secondary"}"
     Role = "Database"
+    Type = count.index == 0 ? "Primary" : "Secondary"
   }
 
   lifecycle {
@@ -40,12 +39,22 @@ resource "aws_instance" "db" {
 }
 
 # Output EC2 DB endpoint
-output "ec2_db_endpoint" {
-  description = "EC2 MySQL instance private IP (use port 3306)"
-  value       = var.create_ec2_db && !var.create_rds ? (length(aws_instance.db) > 0 ? "${aws_instance.db[0].private_ip}:3306" : "Not created") : "Using RDS or no DB"
+output "ec2_db_endpoints" {
+  description = "EC2 MySQL instance private IPs (use port 3306)"
+  value       = var.create_ec2_db && !var.create_rds ? [for instance in aws_instance.db : "${instance.private_ip}:3306"] : []
 }
 
-output "ec2_db_private_ip" {
-  description = "EC2 MySQL instance private IP address"
-  value       = var.create_ec2_db && !var.create_rds ? (length(aws_instance.db) > 0 ? aws_instance.db[0].private_ip : "Not created") : "Using RDS or no DB"
+output "ec2_db_private_ips" {
+  description = "EC2 MySQL instance private IP addresses"
+  value       = var.create_ec2_db && !var.create_rds ? aws_instance.db[*].private_ip : []
+}
+
+output "ec2_db_primary_endpoint" {
+  description = "Primary EC2 MySQL instance endpoint"
+  value       = var.create_ec2_db && !var.create_rds && length(aws_instance.db) > 0 ? "${aws_instance.db[0].private_ip}:3306" : "Not created"
+}
+
+output "ec2_db_secondary_endpoint" {
+  description = "Secondary EC2 MySQL instance endpoint"
+  value       = var.create_ec2_db && !var.create_rds && length(aws_instance.db) > 1 ? "${aws_instance.db[1].private_ip}:3306" : "Not created"
 }

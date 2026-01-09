@@ -29,7 +29,6 @@ asg_target_cpu_utilization      = 70
 # AWS Academy: Install MySQL directly on web servers (no separate DB instance)
 create_rds                  = false  # AWS Academy: No RDS permissions
 create_ec2_db               = false  # AWS Academy blocks EC2 instance creation
-install_mysql_on_web        = true   # Recommended: MySQL on web servers
 db_instance_class           = "db.t3.small"
 db_name                     = "webapp"
 db_username                 = "admin"

@@ -95,45 +95,17 @@ EOF
 chown -R apache:apache /var/www/html
 chmod -R 755 /var/www/html
 
-# Install MySQL on web server (AWS Academy workaround)
-if [ "${install_mysql}" = "true" ]; then
-    echo "Installing MySQL on web server..." | systemd-cat -t mysql-install
-
-    # Install MySQL server
-    dnf install -y mysql-server
-
-    # Start and enable MySQL
-    systemctl start mysqld
-    systemctl enable mysqld
-
-    # Wait for MySQL to start
-    sleep 5
-
-    # Create database and user
-    mysql -u root <<-EOSQL
-        CREATE DATABASE IF NOT EXISTS ${db_name};
-        CREATE USER IF NOT EXISTS '${db_username}'@'localhost' IDENTIFIED BY '${db_password}';
-        GRANT ALL PRIVILEGES ON ${db_name}.* TO '${db_username}'@'localhost';
-        FLUSH PRIVILEGES;
-EOSQL
-
-    # Store local database connection info
-    cat >> /etc/environment <<EOF
-DB_ENDPOINT=localhost:3306
-DB_NAME=${db_name}
-DB_USERNAME=${db_username}
-DB_HOST=localhost
-EOF
-
-    echo "MySQL installed successfully on web server" | systemd-cat -t mysql-install
-else
-    # Store database connection information in environment variables
-    cat >> /etc/environment <<EOF
+# Store database connection information in environment variables
+cat >> /etc/environment <<EOF
 DB_ENDPOINT=${db_endpoint}
+DB_PRIMARY=${db_primary}
+DB_SECONDARY=${db_secondary}
 DB_NAME=${db_name}
 DB_USERNAME=${db_username}
 EOF
-fi
+
+# Update index.html with DB info
+sed -i '/<p><strong>Availability Zone:<\/strong>/a \            <p><strong>DB Primary:</strong> ${db_primary}</p>\n            <p><strong>DB Secondary:</strong> ${db_secondary}</p>' /var/www/html/index.html
 
 # Install CloudWatch agent (optional)
 # dnf install -y amazon-cloudwatch-agent

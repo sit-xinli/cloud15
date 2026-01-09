@@ -55,10 +55,11 @@ resource "aws_launch_template" "web" {
 
   user_data = base64encode(templatefile("${path.module}/user_data.sh", {
     db_endpoint   = var.create_rds ? aws_db_instance.main[0].endpoint : (var.create_ec2_db && length(aws_instance.db) > 0 ? "${aws_instance.db[0].private_ip}:3306" : "localhost:3306")
+    db_primary    = var.create_rds ? aws_db_instance.main[0].endpoint : (var.create_ec2_db && length(aws_instance.db) > 0 ? "${aws_instance.db[0].private_ip}:3306" : "localhost:3306")
+    db_secondary  = var.create_rds ? aws_db_instance.main[0].endpoint : (var.create_ec2_db && length(aws_instance.db) > 1 ? "${aws_instance.db[1].private_ip}:3306" : (length(aws_instance.db) > 0 ? "${aws_instance.db[0].private_ip}:3306" : "localhost:3306"))
     db_name       = var.db_name
     db_username   = var.db_username
     db_password   = var.db_password
-    install_mysql = var.install_mysql_on_web ? "true" : "false"
   }))
 
   tag_specifications {
