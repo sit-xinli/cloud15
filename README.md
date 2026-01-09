@@ -100,10 +100,10 @@ terraform apply -auto-approve
 
 ```bash
 # ALB の DNS 名を取得
-terraform output alb_dns_name
+terraform output alb_dns_url
 ```
 
-ブラウザで `http://<alb-dns-name>` にアクセスしてアプリケーションを確認してください。
+ブラウザで `alb_dns_url` にアクセスしてアプリケーションを確認してください。
 
 ## バックエンドの設定 (本番環境推奨)
 
