@@ -1,0 +1,47 @@
+# Project Configuration
+# Copy this file to terraform.tfvars and update with your values
+
+# Project and Environment
+project_name = "myapp"
+environment  = "prod"
+
+# AWS Region
+aws_region = "us-east-1"
+
+# VPC and Network Configuration
+vpc_cidr             = "10.0.0.0/16"
+availability_zones   = ["us-east-1a", "us-east-1b"]
+public_subnet_cidrs  = ["10.0.0.0/24", "10.0.2.0/24"]
+private_subnet_cidrs = ["10.0.1.0/24", "10.0.3.0/24"]
+
+# EC2 Configuration
+web_instance_type           = "t3.small"
+ec2_instance_profile_name   = "EC2InstanceProfile"  # AWS Academy: Use existing profile
+
+# Auto Scaling Configuration
+asg_min_size                    = 2
+asg_max_size                    = 6
+asg_desired_capacity            = 2
+asg_health_check_grace_period   = 300
+asg_target_cpu_utilization      = 70
+
+# Database Configuration
+# AWS Academy: Install MySQL directly on web servers (no separate DB instance)
+create_rds                  = false  # AWS Academy: No RDS permissions
+create_ec2_db               = false  # AWS Academy blocks EC2 instance creation
+install_mysql_on_web        = true   # Recommended: MySQL on web servers
+db_instance_class           = "db.t3.small"
+db_name                     = "webapp"
+db_username                 = "admin"
+db_password                 = "CHANGE_ME_TO_STRONG_PASSWORD"  # IMPORTANT: Use a strong password!
+db_allocated_storage        = 20
+db_max_allocated_storage    = 100
+db_backup_retention_period  = 7
+db_backup_window            = "03:00-04:00"
+db_maintenance_window       = "Mon:04:00-Mon:05:00"
+db_skip_final_snapshot      = true   # AWS Academy: Set to true to avoid snapshot issues
+
+# Backend Configuration (Optional - for documentation)
+# Update these values in backend.tf when ready to use remote state
+# backend_s3_bucket       = "my-terraform-state-bucket"
+# backend_dynamodb_table  = "my-terraform-locks"
