@@ -67,7 +67,6 @@ cd cloud15
 
 # terraform.tfvars を編集して値を設定
 # 重要: 強力な db_password を設定してください!
-nano terraform.tfvars
 ```
 
 ### 2. Terraform の初期化
