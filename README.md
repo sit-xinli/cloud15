@@ -105,16 +105,6 @@ terraform output alb_dns_url
 ブラウザで `alb_dns_url` にアクセスしてアプリケーションを確認してください。
 
 
-### 2. バックエンド設定の有効化
-
-`backend.tf` を編集し、バックエンド設定ブロックのコメントを解除して、バケット名とテーブル名を更新します。
-
-### 3. ステートの移行
-
-```bash
-terraform init -migrate-state
-```
-
 ## 設定
 
 ### 必須変数
