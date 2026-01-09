@@ -1,4 +1,4 @@
-# Data source for latest Amazon Linux 2023 AMI
+# 最新の Amazon Linux 2023 AMI 用データソース
 data "aws_ami" "amazon_linux_2023" {
   most_recent = true
   owners      = ["amazon"]
@@ -14,13 +14,13 @@ data "aws_ami" "amazon_linux_2023" {
   }
 }
 
-# AWS Academy: Use existing EC2InstanceProfile instead of creating IAM roles
-# AWS Academy restricts IAM role creation, so we use the pre-existing profile
+# AWS Academy: IAM ロールを作成する代わりに既存の EC2InstanceProfile を使用する
+# AWS Academy は IAM ロールの作成を制限しているため、既存のプロファイルを使用します
 data "aws_iam_instance_profile" "lab_profile" {
   name = var.ec2_instance_profile_name
 }
 
-# Launch Template
+# 起動テンプレート
 resource "aws_launch_template" "web" {
   name_prefix   = "${var.project_name}-${var.environment}-web-"
   image_id      = data.aws_ami.amazon_linux_2023.id
@@ -54,12 +54,12 @@ resource "aws_launch_template" "web" {
   }
 
   user_data = base64encode(templatefile("${path.module}/user_data.sh", {
-    db_endpoint   = var.create_rds ? aws_db_instance.main[0].endpoint : (var.create_ec2_db && length(aws_instance.db) > 0 ? "${aws_instance.db[0].private_ip}:3306" : "localhost:3306")
-    db_primary    = var.create_rds ? aws_db_instance.main[0].endpoint : (var.create_ec2_db && length(aws_instance.db) > 0 ? "${aws_instance.db[0].private_ip}:3306" : "localhost:3306")
-    db_secondary  = var.create_rds ? aws_db_instance.main[0].endpoint : (var.create_ec2_db && length(aws_instance.db) > 1 ? "${aws_instance.db[1].private_ip}:3306" : (length(aws_instance.db) > 0 ? "${aws_instance.db[0].private_ip}:3306" : "localhost:3306"))
-    db_name       = var.db_name
-    db_username   = var.db_username
-    db_password   = var.db_password
+    db_endpoint  = "${aws_instance.db[0].private_ip}:3306"
+    db_primary   = "${aws_instance.db[0].private_ip}:3306"
+    db_secondary = "${aws_instance.db[1].private_ip}:3306"
+    db_name      = var.db_name
+    db_username  = var.db_username
+    db_password  = var.db_password
   }))
 
   tag_specifications {

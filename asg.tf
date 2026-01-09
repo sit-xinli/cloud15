@@ -1,4 +1,4 @@
-# Auto Scaling Group
+# オートスケーリンググループ
 resource "aws_autoscaling_group" "web" {
   name                      = "${var.project_name}-${var.environment}-web-asg"
   vpc_zone_identifier       = aws_subnet.private[*].id
@@ -62,7 +62,7 @@ resource "aws_autoscaling_group" "web" {
   }
 }
 
-# Auto Scaling Policy - Target Tracking based on CPU
+# オートスケーリングポリシー - CPU に基づくターゲット追跡
 resource "aws_autoscaling_policy" "cpu_target_tracking" {
   name                   = "${var.project_name}-${var.environment}-cpu-target-tracking"
   autoscaling_group_name = aws_autoscaling_group.web.name
@@ -77,7 +77,7 @@ resource "aws_autoscaling_policy" "cpu_target_tracking" {
   }
 }
 
-# Auto Scaling Policy - Target Tracking based on ALB Request Count
+# オートスケーリングポリシー - ALB リクエスト数に基づくターゲット追跡
 resource "aws_autoscaling_policy" "alb_request_count_target_tracking" {
   name                   = "${var.project_name}-${var.environment}-alb-request-count-tracking"
   autoscaling_group_name = aws_autoscaling_group.web.name
@@ -89,6 +89,6 @@ resource "aws_autoscaling_policy" "alb_request_count_target_tracking" {
       resource_label         = "${aws_lb.main.arn_suffix}/${aws_lb_target_group.web.arn_suffix}"
     }
 
-    target_value = 1000
+    target_value = 100  # テスト中の高速スケーリングのための低いしきい値
   }
 }

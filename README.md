@@ -1,136 +1,128 @@
-# AWS Multi-Tier Infrastructure with Terraform
+# Terraform を使用した AWS マルチティアインフラストラクチャ
 
-This Terraform project deploys a highly available, production-ready AWS infrastructure for web applications.
+このTerraformプロジェクトは、Webアプリケーション用の高可用性で本番環境に対応したAWSインフラストラクチャをデプロイします。
 
-## Architecture
+## アーキテクチャ
 
 ![AWS Architecture](architecture.png)
 
-For detailed architecture documentation, see [architecture.md](architecture.md).
+詳細なアーキテクチャドキュメントは、[architecture.md](architecture.md)を参照してください。
 
-For Claude Code guidance, see [CLAUDE.md](CLAUDE.md).
+Claude Code のガイダンスについては、[CLAUDE.md](CLAUDE.md)を参照してください。
 
-## ⚠️ AWS Academy Users
+## ⚠️ AWS Academy ユーザーの方へ
 
-This project is compatible with AWS Academy's restricted IAM permissions. Key modifications:
-- Uses existing `EC2InstanceProfile` instead of creating IAM roles
-- RDS enhanced monitoring and Performance Insights are disabled
-- **RDS must be created manually** via AWS Console (see [RDS_WORKAROUND.md](RDS_WORKAROUND.md))
-- See [AWS_ACADEMY.md](AWS_ACADEMY.md) for complete compatibility notes and troubleshooting
+このプロジェクトは AWS Academy の制限された IAM 権限と完全に互換性があります:
+- 新しくIAMロールを作成する代わりに、既存の `EC2InstanceProfile` を使用
+- **専用EC2インスタンス上のMySQL** (完全自動化、デフォルト構成)
+- すべてのネットワーク、ALB、Auto Scaling 機能が完全に動作
 
-**Quick Start**: See [QUICKSTART_AWS_ACADEMY.md](QUICKSTART_AWS_ACADEMY.md) for step-by-step deployment guide.
+**データベースソリューション:**
+- ✅ **EC2ベースのMySQL**: 完全自動化、プライベートサブネット内の2インスタンス - [EC2_DATABASE.md](EC2_DATABASE.md)を参照
 
-**Database Options**:
-- ✅ **MySQL on Web Servers** (Recommended): Fully automated, works in AWS Academy - See [MYSQL_ON_WEB.md](MYSQL_ON_WEB.md)
-- ⚠️ **RDS**: Requires manual setup via console - See [RDS_WORKAROUND.md](RDS_WORKAROUND.md)
-- ⚠️ **Dedicated EC2 DB**: AWS Academy blocks EC2 instance creation - See [EC2_DATABASE.md](EC2_DATABASE.md)
+完全な互換性に関する注意事項は、[AWS_ACADEMY.md](AWS_ACADEMY.md)を参照してください。
 
-All core features (VPC, ALB, Auto Scaling, Database) work within AWS Academy constraints!
+### 主要コンポーネント
 
-### Key Components
+- **VPC** (10.0.0.0/16) 2つのアベイラビリティゾーンにまたがる
+- **パブリックサブネット** Application Load Balancer と NAT Gateway 用
+- **プライベートサブネット** Web アプリケーションインスタンスとデータベース用
+- **Application Load Balancer** (ALB) トラフィック分散用
+- **Auto Scaling Group** 2-6個のWebインスタンス (t3.small)
+- **EC2上のMySQL 8.0** - プライベートサブネット内の2つのデータベースインスタンス (t3.small)
+- **NAT Gateway** プライベートサブネットのインターネットアクセス用
+- **セキュリティグループ** 最小権限アクセス制御
 
-- **VPC** (10.0.0.0/16) spanning 2 Availability Zones
-- **Public Subnets** for Application Load Balancer and NAT Gateway
-- **Private Subnets** for web application instances and RDS database
-- **Application Load Balancer** (ALB) for traffic distribution
-- **Auto Scaling Group** with 2-6 instances (t3.small)
-- **Multi-AZ RDS MySQL 8.0** database (db.t3.small)
-- **NAT Gateway** for private subnet internet access
-- **Security Groups** with least-privilege access controls
-
-## Prerequisites
+## 前提条件
 
 1. **Terraform** >= 1.5.0
    ```bash
    terraform --version
    ```
 
-2. **AWS CLI** configured with appropriate credentials
+2. **AWS CLI** 適切な認証情報で構成済み
    ```bash
    aws configure
-   # Or use environment variables:
+   # または環境変数を使用:
    # export AWS_ACCESS_KEY_ID="your-access-key"
    # export AWS_SECRET_ACCESS_KEY="your-secret-key"
    # export AWS_DEFAULT_REGION="us-east-1"
    ```
 
-3. **AWS Account** with permissions to create:
-   - VPC, Subnets, Internet Gateway, NAT Gateway
-   - EC2 instances, Auto Scaling Groups, Launch Templates
+3. **AWSアカウント** 以下のリソースを作成する権限が必要:
+   - VPC、サブネット、インターネットゲートウェイ、NATゲートウェイ
+   - EC2インスタンス、Auto Scaling Group、起動テンプレート
    - Application Load Balancer
-   - RDS instances
-   - IAM roles and policies
-   - Security Groups
+   - RDSインスタンス
+   - IAMロールとポリシー
+   - セキュリティグループ
 
-## Quick Start
+## クイックスタート
 
-### 1. Clone and Configure
+### 1. クローンと設定
 
 ```bash
-# Navigate to project directory
+# プロジェクトディレクトリに移動
 cd cloud15
 
-# Copy the example variables file
-cp terraform.tfvars.example terraform.tfvars
-
-# Edit terraform.tfvars with your values
-# IMPORTANT: Set a strong db_password!
+# terraform.tfvars を編集して値を設定
+# 重要: 強力な db_password を設定してください!
 nano terraform.tfvars
 ```
 
-### 2. Initialize Terraform
+### 2. Terraform の初期化
 
 ```bash
-# Download providers and modules
+# プロバイダーとモジュールをダウンロード
 terraform init
 ```
 
-### 3. Review the Plan
+### 3. プランの確認
 
 ```bash
-# Preview what will be created
+# 作成される内容をプレビュー
 terraform plan
 ```
 
-### 4. Deploy Infrastructure
+### 4. インフラストラクチャのデプロイ
 
 ```bash
-# Deploy (will prompt for confirmation)
+# デプロイ (確認プロンプトが表示されます)
 terraform apply
 
-# Or deploy without confirmation
+# または確認なしでデプロイ
 terraform apply -auto-approve
 ```
 
-### 5. Access Your Application
+### 5. アプリケーションへのアクセス
 
-After deployment completes (10-15 minutes), Terraform will output the ALB DNS name:
+デプロイ完了後(10-15分)、Terraform が ALB の DNS 名を出力します:
 
 ```bash
-# Get the ALB DNS name
+# ALB の DNS 名を取得
 terraform output alb_dns_name
 ```
 
-Visit `http://<alb-dns-name>` in your browser to see your application.
+ブラウザで `http://<alb-dns-name>` にアクセスしてアプリケーションを確認してください。
 
-## Backend Setup (Recommended for Production)
+## バックエンドの設定 (本番環境推奨)
 
-For team collaboration and state locking, set up an S3 backend:
+チームコラボレーションとステートロックのために、S3バックエンドを設定します:
 
-### 1. Create S3 Bucket and DynamoDB Table
+### 1. S3バケットとDynamoDBテーブルの作成
 
 ```bash
-# Create S3 bucket for state storage
+# ステート保存用のS3バケットを作成
 aws s3api create-bucket \
   --bucket your-terraform-state-bucket \
   --region us-east-1
 
-# Enable versioning on the bucket
+# バケットのバージョニングを有効化
 aws s3api put-bucket-versioning \
   --bucket your-terraform-state-bucket \
   --versioning-configuration Status=Enabled
 
-# Create DynamoDB table for state locking
+# ステートロック用のDynamoDBテーブルを作成
 aws dynamodb create-table \
   --table-name your-terraform-locks \
   --attribute-definitions AttributeName=LockID,AttributeType=S \
@@ -139,27 +131,27 @@ aws dynamodb create-table \
   --region us-east-1
 ```
 
-### 2. Enable Backend Configuration
+### 2. バックエンド設定の有効化
 
-Edit `backend.tf` and uncomment the backend configuration block, updating with your bucket and table names.
+`backend.tf` を編集し、バックエンド設定ブロックのコメントを解除して、バケット名とテーブル名を更新します。
 
-### 3. Migrate State
+### 3. ステートの移行
 
 ```bash
 terraform init -migrate-state
 ```
 
-## Configuration
+## 設定
 
-### Required Variables
+### 必須変数
 
-These must be set in `terraform.tfvars`:
+`terraform.tfvars` に設定する必要があります:
 
-- `db_password` - Strong password for RDS database (minimum 8 characters)
+- `db_password` - RDSデータベース用の強力なパスワード (最低8文字)
 
-### Optional Variables
+### オプション変数
 
-You can customize these in `terraform.tfvars` (defaults shown):
+`terraform.tfvars` でカスタマイズできます (デフォルト値を表示):
 
 ```hcl
 project_name               = "myapp"
@@ -167,238 +159,239 @@ environment                = "prod"
 aws_region                 = "us-east-1"
 vpc_cidr                   = "10.0.0.0/16"
 web_instance_type          = "t3.small"
-asg_min_size               = 2
-asg_max_size               = 6
-asg_desired_capacity       = 2
+asg_min_size               = 1
+asg_max_size               = 5
+asg_desired_capacity       = 1
 asg_target_cpu_utilization = 70
 db_instance_class          = "db.t3.small"
 db_name                    = "webapp"
 db_username                = "admin"
 ```
 
-See `variables.tf` for the complete list of configurable variables.
+設定可能な変数の完全なリストについては、`variables.tf` を参照してください。
 
-## Outputs
+## 出力値
 
-After deployment, Terraform provides these outputs:
+デプロイ後、Terraform は以下の出力を提供します:
 
-| Output | Description |
+| 出力値 | 説明 |
 |--------|-------------|
-| `alb_dns_name` | Load balancer DNS name (use this to access your app) |
-| `rds_endpoint` | Database connection endpoint |
-| `vpc_id` | VPC identifier |
-| `nat_gateway_ip` | NAT Gateway public IP (for whitelisting) |
+| `alb_dns_name` | ロードバランサーのDNS名 (アプリケーションへのアクセスに使用) |
+| `rds_endpoint` | データベース接続エンドポイント |
+| `vpc_id` | VPC識別子 |
+| `nat_gateway_ip` | NATゲートウェイのパブリックIP (ホワイトリスト登録用) |
 
-View all outputs:
+すべての出力値を表示:
 
 ```bash
 terraform output
 ```
 
-## Management
+## 管理
 
-### Scaling
+### Auto Scaling と負荷テスト
 
-To adjust the number of instances:
+インフラストラクチャは以下に基づいて **1から5インスタンス** まで自動的にスケールします:
+- **CPU使用率**: 平均CPU > 70%でスケール
+- **リクエスト数**: インスタンスあたり > 1000リクエストでスケール
+
+スケーリングパラメータを手動で調整するには:
 
 ```bash
-# Edit terraform.tfvars
-asg_min_size         = 3
-asg_desired_capacity = 4
-asg_max_size         = 10
+# terraform.tfvars を編集
+asg_min_size         = 1
+asg_desired_capacity = 2
+asg_max_size         = 5
 
-# Apply changes
+# 変更を適用
 terraform apply
 ```
 
-Auto Scaling will also automatically scale based on:
-- CPU utilization (target: 70%)
-- ALB request count (target: 1000 requests per target)
-
-### Updating Configuration
+### 設定の更新
 
 ```bash
-# Make changes to .tf files or terraform.tfvars
-# Preview changes
+# .tf ファイルまたは terraform.tfvars を変更
+# 変更をプレビュー
 terraform plan
 
-# Apply changes
+# 変更を適用
 terraform apply
 ```
 
-### Viewing Resources
+### リソースの表示
 
 ```bash
-# List all resources
+# すべてのリソースをリスト
 terraform state list
 
-# Show specific resource
+# 特定のリソースを表示
 terraform show aws_lb.main
 
-# Get current state
+# 現在のステートを取得
 terraform show
 ```
 
-## Monitoring
+## モニタリング
 
-### CloudWatch Metrics
+### CloudWatch メトリクス
 
-Monitor your infrastructure in AWS CloudWatch:
+AWS CloudWatch でインフラストラクチャをモニタリング:
 
-- **ALB**: Request count, target response time, healthy host count
-- **Auto Scaling**: CPU utilization, network traffic, instance count
-- **RDS**: CPU, connections, IOPS, replication lag
+- **ALB**: リクエスト数、ターゲットレスポンス時間、正常なホスト数
+- **Auto Scaling**: CPU使用率、ネットワークトラフィック、インスタンス数
+- **RDS**: CPU、接続数、IOPS、レプリケーション遅延
 
-### Logs
+### ログ
 
-CloudWatch Logs are enabled for:
-- RDS: Error logs, general logs, slow query logs
+CloudWatch Logs が以下に対して有効化されています:
+- RDS: エラーログ、一般ログ、スロークエリログ
 
-### Health Checks
+### ヘルスチェック
 
-The ALB performs health checks on instances:
-- Path: `/`
-- Interval: 30 seconds
-- Healthy threshold: 2 consecutive successes
-- Unhealthy threshold: 2 consecutive failures
+ALB はインスタンスのヘルスチェックを実行します:
+- パス: `/`
+- 間隔: 30秒
+- 正常しきい値: 2回連続成功
+- 異常しきい値: 2回連続失敗
 
-## Security
+## セキュリティ
 
-### Network Security
+### ネットワークセキュリティ
 
-- Web instances and databases are in **private subnets** with no direct internet access
-- NAT Gateway provides controlled outbound internet access
-- Security groups implement least-privilege access
-- Multi-layer security: ALB → Web → Database
+- Web インスタンスとデータベースは**プライベートサブネット**にあり、直接インターネットアクセスなし
+- NAT Gateway が制御されたアウトバウンドインターネットアクセスを提供
+- セキュリティグループが最小権限アクセスを実装
+- 多層セキュリティ: ALB → Web → データベース
 
-### Encryption
+### 暗号化
 
-- RDS storage encrypted at rest
-- HTTPS support ready (add ACM certificate to `alb.tf`)
+- RDS ストレージは保存時に暗号化
+- HTTPS サポート準備完了 (ACM証明書を `alb.tf` に追加)
 
-### Secrets Management
+### シークレット管理
 
-**IMPORTANT**: Never commit `terraform.tfvars` to version control!
+**重要**: `terraform.tfvars` をバージョン管理にコミットしないでください!
 
-For production, consider using:
-- AWS Secrets Manager for database credentials
-- AWS Systems Manager Parameter Store for configuration
+本番環境では、以下の使用を検討してください:
+- データベース認証情報用の AWS Secrets Manager
+- 設定用の AWS Systems Manager Parameter Store
 
-### Access
+### アクセス
 
-- EC2 instances use IAM roles (no access keys needed)
-- AWS Systems Manager Session Manager enabled for secure instance access (no SSH keys required)
+- EC2 インスタンスは IAM ロールを使用 (アクセスキー不要)
+- セキュアなインスタンスアクセス用に AWS Systems Manager Session Manager を有効化 (SSH キー不要)
 
-## Cost Optimization
+## コスト最適化
 
-### Current Configuration Costs (Approximate)
+### 現在の構成コスト (概算)
 
-Monthly costs in us-east-1 (as of 2025):
+us-east-1 での月額コスト (2025年時点):
 
-- NAT Gateway: ~$32/month + data transfer
-- Application Load Balancer: ~$16/month + LCU charges
-- EC2 (2x t3.small): ~$30/month
-- RDS Multi-AZ (db.t3.small): ~$55/month
-- EBS Storage (gp3): ~$2/month
-- **Total**: ~$135-150/month (excluding data transfer)
+- NAT Gateway: 約$32/月 + データ転送
+- Application Load Balancer: 約$16/月 + LCU料金
+- EC2 (2x t3.small): 約$30/月
+- RDS Multi-AZ (db.t3.small): 約$55/月
+- EBS ストレージ (gp3): 約$2/月
+- **合計**: 約$135-150/月 (データ転送除く)
 
-### Cost Savings Tips
+### コスト削減のヒント
 
-1. Use Reserved Instances or Savings Plans for 30-75% discount on predictable workloads
-2. Consider single-AZ RDS for dev/test environments (not recommended for production)
-3. Use Auto Scaling to match capacity to demand
-4. Enable RDS storage autoscaling to avoid over-provisioning
-5. Review CloudWatch metrics to right-size instances
+1. 予測可能なワークロードには、リザーブドインスタンスまたはSavings Plans を使用して30-75%割引
+2. 開発/テスト環境にはシングルAZ RDSを検討 (本番環境には非推奨)
+3. 需要に容量を合わせるために Auto Scaling を使用
+4. 過剰プロビジョニングを避けるために RDS ストレージの自動スケーリングを有効化
+5. CloudWatch メトリクスを確認してインスタンスサイズを適正化
 
-## Troubleshooting
+## トラブルシューティング
 
-### Instances Not Healthy
+### インスタンスが正常でない
 
 ```bash
-# Check Auto Scaling Group health
+# Auto Scaling Group の健全性を確認
 aws autoscaling describe-auto-scaling-groups \
   --auto-scaling-group-names $(terraform output -raw web_asg_name)
 
-# Check target health
+# ターゲットの健全性を確認
 aws elbv2 describe-target-health \
   --target-group-arn $(terraform output -raw alb_arn | sed 's/:loadbalancer/:targetgroup/')
 ```
 
-### Cannot Connect to Database
+### データベースに接続できない
 
-1. Check security group rules
-2. Verify instances are in correct subnets
-3. Check RDS endpoint: `terraform output rds_endpoint`
-4. Verify credentials in user data script
+1. セキュリティグループルールを確認
+2. インスタンスが正しいサブネットにあることを確認
+3. RDS エンドポイントを確認: `terraform output rds_endpoint`
+4. ユーザーデータスクリプトの認証情報を確認
 
-### Terraform Errors
+### Terraform エラー
 
 ```bash
-# Refresh state
+# ステートを更新
 terraform refresh
 
-# Validate configuration
+# 設定を検証
 terraform validate
 
-# Format code
+# コードをフォーマット
 terraform fmt -recursive
 ```
 
-## Cleanup
+## クリーンアップ
 
-To destroy all resources:
+すべてのリソースを削除するには:
 
 ```bash
-# Preview what will be destroyed
+# 削除される内容をプレビュー
 terraform plan -destroy
 
-# Destroy infrastructure
+# インフラストラクチャを削除
 terraform destroy
 
-# Or without confirmation
+# または確認なしで削除
 terraform destroy -auto-approve
 ```
 
-**Note**: By default, a final RDS snapshot will be created before deletion. Set `db_skip_final_snapshot = true` in `terraform.tfvars` to skip this.
+**注意**: デフォルトでは、削除前に最終RDSスナップショットが作成されます。これをスキップするには、`terraform.tfvars` で `db_skip_final_snapshot = true` を設定してください。
 
-## Project Structure
+## プロジェクト構造
 
 ```
 .
-├── README.md                   # This file
-├── CLAUDE.md                   # Claude Code guidance
-├── architecture.md             # Detailed architecture documentation
-├── architecture.png            # Architecture diagram
-├── versions.tf                 # Terraform version constraints
-├── provider.tf                 # AWS provider configuration
-├── backend.tf                  # Remote state configuration
-├── variables.tf                # Input variable definitions
-├── outputs.tf                  # Output value definitions
-├── terraform.tfvars.example    # Example variable values
-├── .gitignore                  # Git ignore rules
-├── vpc.tf                      # VPC and route tables
-├── subnets.tf                  # Subnet definitions
+├── README.md                   # このファイル
+├── CLAUDE.md                   # Claude Code ガイダンス
+├── architecture.md             # 詳細なアーキテクチャドキュメント
+├── architecture.png            # アーキテクチャ図
+├── versions.tf                 # Terraform バージョン制約
+├── provider.tf                 # AWS プロバイダー設定
+├── backend.tf                  # リモートステート設定
+├── variables.tf                # 入力変数定義
+├── outputs.tf                  # 出力値定義
+├── terraform.tfvars            # 変数値 (git無視)
+├── .gitignore                  # Git 無視ルール
+├── vpc.tf                      # VPC とルートテーブル
+├── subnets.tf                  # サブネット定義
 ├── nat.tf                      # NAT Gateway
-├── security_groups.tf          # Security group rules
+├── security_groups.tf          # セキュリティグループルール
 ├── alb.tf                      # Application Load Balancer
-├── launch_template.tf          # EC2 launch template
-├── user_data.sh                # Instance initialization script
+├── launch_template.tf          # EC2 起動テンプレート
+├── user_data.sh                # インスタンス初期化スクリプト
 ├── asg.tf                      # Auto Scaling Group
-└── rds.tf                      # RDS MySQL database
+├── db_instance.tf              # EC2 上の MySQL
+└── db_user_data.sh             # データベース初期化スクリプト
 ```
 
-## Contributing
+## 貢献
 
-For guidance on working with this codebase, see [CLAUDE.md](CLAUDE.md).
+このコードベースでの作業に関するガイダンスについては、[CLAUDE.md](CLAUDE.md)を参照してください。
 
-## License
+## ライセンス
 
-This project is provided as-is for educational and demonstration purposes.
+このプロジェクトは教育およびデモンストレーション目的で提供されています。
 
-## Support
+## サポート
 
-For issues or questions:
-1. Review [architecture.md](architecture.md) for detailed documentation
-2. Check [CLAUDE.md](CLAUDE.md) for development guidance
-3. Review AWS documentation for specific services
-4. Check Terraform documentation: https://www.terraform.io/docs
+問題や質問については:
+1. 詳細なドキュメントは [architecture.md](architecture.md) を確認
+2. 開発ガイダンスは [CLAUDE.md](CLAUDE.md) を確認
+3. 特定のサービスについては AWS ドキュメントを確認
+4. Terraform ドキュメントを確認: https://www.terraform.io/docs

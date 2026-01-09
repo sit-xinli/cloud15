@@ -1,142 +1,142 @@
 #!/bin/bash
 set -e
 
-# EC2-based MySQL Database Setup
-# This script installs and configures MySQL on Amazon Linux 2023
+# EC2 ベースの MySQL データベースセットアップ
+# このスクリプトは Amazon Linux 2023 に MySQL をインストールして構成します
 
-echo "Starting MySQL installation on EC2..." | systemd-cat -t db-setup
+echo "EC2 への MySQL のインストールを開始します..." | systemd-cat -t db-setup
 
-# Update system
+# システムの更新
 dnf update -y
 
-# Install MySQL Server
+# MySQL サーバーのインストール
 dnf install -y mysql-server
 
-# Start and enable MySQL
+# MySQL の起動と有効化
 systemctl start mysqld
 systemctl enable mysqld
 
-# Wait for MySQL to be ready
+# MySQL の準備ができるまで待機
 sleep 10
 
-# Secure MySQL installation and create database
+# MySQL のセキュリティ設定とデータベースの作成
 mysql -u root <<-EOSQL
-    -- Remove anonymous users
+    -- 匿名ユーザーの削除
     DELETE FROM mysql.user WHERE User='';
 
-    -- Remove remote root login
+    -- リモート root ログインの削除
     DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');
 
-    -- Remove test database
+    -- テストデータベースの削除
     DROP DATABASE IF EXISTS test;
     DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';
 
-    -- Create application database
+    -- アプリケーションデータベースの作成
     CREATE DATABASE IF NOT EXISTS ${db_name};
 
-    -- Create application user with remote access
+    -- リモートアクセス可能なアプリケーションユーザーの作成
     CREATE USER IF NOT EXISTS '${db_username}'@'%' IDENTIFIED BY '${db_password}';
     GRANT ALL PRIVILEGES ON ${db_name}.* TO '${db_username}'@'%';
 
-    -- Create read-only user for monitoring
+    -- モニタリング用の読み取り専用ユーザーの作成
     CREATE USER IF NOT EXISTS 'readonly'@'%' IDENTIFIED BY 'readonly123';
     GRANT SELECT ON ${db_name}.* TO 'readonly'@'%';
 
-    -- Flush privileges
+    -- 権限のフラッシュ
     FLUSH PRIVILEGES;
 EOSQL
 
-# Configure MySQL to listen on all interfaces (not just localhost)
+# MySQL がすべてのインターフェースでリッスンするように構成 (localhost だけでなく)
 cat > /etc/my.cnf.d/custom.cnf <<EOF
 [mysqld]
-# Network settings
+# ネットワーク設定
 bind-address = 0.0.0.0
 port = 3306
 
-# Performance settings
+# パフォーマンス設定
 max_connections = 200
 innodb_buffer_pool_size = 256M
 
-# Character set
+# 文字セット
 character-set-server = utf8mb4
 collation-server = utf8mb4_unicode_ci
 
-# Binary logging for backups
+# バックアップ用のバイナリログ
 log_bin = /var/lib/mysql/mysql-bin
 expire_logs_days = 7
 
-# Error logging
+# エラーログ
 log_error = /var/log/mysql/error.log
 
-# Slow query log
+# スロークエリログ
 slow_query_log = 1
 slow_query_log_file = /var/log/mysql/slow-query.log
 long_query_time = 2
 EOF
 
-# Create log directory
+# ログディレクトリの作成
 mkdir -p /var/log/mysql
 chown -R mysql:mysql /var/log/mysql
 
-# Restart MySQL to apply configuration
+# 構成を適用するために MySQL を再起動
 systemctl restart mysqld
 
-# Create backup script
+# バックアップスクリプトの作成
 cat > /usr/local/bin/mysql-backup.sh <<'BACKUP_SCRIPT'
 #!/bin/bash
 BACKUP_DIR="/var/lib/mysql/backups"
 DATE=$(date +%Y%m%d_%H%M%S)
 mkdir -p $BACKUP_DIR
 
-# Backup all databases
+# すべてのデータベースをバックアップ
 mysqldump --all-databases --single-transaction --routines --triggers \
   > $BACKUP_DIR/all-databases-$DATE.sql
 
-# Keep only last 7 days of backups
+# 過去 7 日間のバックアップのみ保持
 find $BACKUP_DIR -name "*.sql" -mtime +7 -delete
 
-echo "Backup completed: all-databases-$DATE.sql"
+echo "バックアップ完了: all-databases-$DATE.sql"
 BACKUP_SCRIPT
 
 chmod +x /usr/local/bin/mysql-backup.sh
 
-# Schedule daily backups at 2 AM
+# 毎日午前 2 時にバックアップをスケジュール
 echo "0 2 * * * root /usr/local/bin/mysql-backup.sh" > /etc/cron.d/mysql-backup
 
-# Create database info file
+# データベース情報ファイルの作成
 cat > /root/database-info.txt <<EOF
 ==============================================
-MySQL Database Information
+MySQL データベース情報
 ==============================================
-Database Name: ${db_name}
-Username: ${db_username}
-Password: ${db_password}
-Port: 3306
-Private IP: $(hostname -I | awk '{print $1}')
+データベース名: ${db_name}
+ユーザー名: ${db_username}
+パスワード: ${db_password}
+ポート: 3306
+プライベート IP: $(hostname -I | awk '{print $1}')
 
-Connection String Examples:
+接続文字列の例:
 - MySQL CLI: mysql -h $(hostname -I | awk '{print $1}') -u ${db_username} -p${db_password} ${db_name}
 - JDBC: jdbc:mysql://$(hostname -I | awk '{print $1}'):3306/${db_name}
 - Python: mysql://$(hostname -I | awk '{print $1}'):3306/${db_name}
 
-Backup Location: /var/lib/mysql/backups/
-Backup Schedule: Daily at 2 AM
+バックアップ場所: /var/lib/mysql/backups/
+バックアップスケジュール: 毎日午前 2 時
 ==============================================
 EOF
 
-# Test database connection
+# データベース接続テスト
 mysql -u ${db_username} -p${db_password} -e "SELECT 'Database setup successful!' as Status; SHOW DATABASES;" ${db_name}
 
-# Create status check script
+# ステータスチェックスクリプトの作成
 cat > /usr/local/bin/db-status.sh <<'STATUS_SCRIPT'
 #!/bin/bash
-echo "===== MySQL Status ====="
+echo "===== MySQL ステータス ====="
 systemctl status mysqld --no-pager
 echo ""
-echo "===== Active Connections ====="
+echo "===== アクティブな接続 ====="
 mysql -u root -e "SHOW PROCESSLIST;"
 echo ""
-echo "===== Database Size ====="
+echo "===== データベースサイズ ====="
 mysql -u root -e "SELECT table_schema AS 'Database',
     ROUND(SUM(data_length + index_length) / 1024 / 1024, 2) AS 'Size (MB)'
     FROM information_schema.tables
@@ -145,5 +145,5 @@ STATUS_SCRIPT
 
 chmod +x /usr/local/bin/db-status.sh
 
-echo "MySQL database setup completed successfully!" | systemd-cat -t db-setup
-echo "Database info saved to /root/database-info.txt" | systemd-cat -t db-setup
+echo "MySQL データベースのセットアップが正常に完了しました！" | systemd-cat -t db-setup
+echo "データベース情報は /root/database-info.txt に保存されました" | systemd-cat -t db-setup

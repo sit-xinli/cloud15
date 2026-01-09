@@ -1,4 +1,4 @@
-# Public Subnets
+# パブリックサブネット
 resource "aws_subnet" "public" {
   count                   = length(var.public_subnet_cidrs)
   vpc_id                  = aws_vpc.main.id
@@ -12,7 +12,7 @@ resource "aws_subnet" "public" {
   }
 }
 
-# Private Subnets
+# プライベートサブネット
 resource "aws_subnet" "private" {
   count             = length(var.private_subnet_cidrs)
   vpc_id            = aws_vpc.main.id
@@ -25,14 +25,14 @@ resource "aws_subnet" "private" {
   }
 }
 
-# Route Table Associations - Public Subnets
+# ルートテーブルの関連付け - パブリックサブネット
 resource "aws_route_table_association" "public" {
   count          = length(var.public_subnet_cidrs)
   subnet_id      = aws_subnet.public[count.index].id
   route_table_id = aws_route_table.public.id
 }
 
-# Route Table Associations - Private Subnets
+# ルートテーブルの関連付け - プライベートサブネット
 resource "aws_route_table_association" "private" {
   count          = length(var.private_subnet_cidrs)
   subnet_id      = aws_subnet.private[count.index].id

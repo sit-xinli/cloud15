@@ -9,7 +9,7 @@ resource "aws_vpc" "main" {
   }
 }
 
-# Internet Gateway
+# インターネットゲートウェイ
 resource "aws_internet_gateway" "main" {
   vpc_id = aws_vpc.main.id
 
@@ -18,7 +18,7 @@ resource "aws_internet_gateway" "main" {
   }
 }
 
-# Public Route Table
+# パブリックルートテーブル
 resource "aws_route_table" "public" {
   vpc_id = aws_vpc.main.id
 
@@ -32,7 +32,7 @@ resource "aws_route_table" "public" {
   }
 }
 
-# Private Route Table
+# プライベートルートテーブル
 resource "aws_route_table" "private" {
   vpc_id = aws_vpc.main.id
 
@@ -41,7 +41,7 @@ resource "aws_route_table" "private" {
   }
 }
 
-# Route for Private Subnet to NAT Gateway (will be added in nat.tf)
+# プライベートサブネットから NAT ゲートウェイへのルート (nat.tf で追加されます)
 resource "aws_route" "private_nat_gateway" {
   route_table_id         = aws_route_table.private.id
   destination_cidr_block = "0.0.0.0/0"

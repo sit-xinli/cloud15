@@ -1,227 +1,128 @@
-# AWS Academy Compatibility Notes
+# AWS Academy 互換性に関する注意事項
 
-This document describes the modifications made to support AWS Academy's restricted permissions.
+このドキュメントでは、AWS Academy の制限された権限内でプロジェクトがどのように動作するかについて説明します。
 
-## AWS Academy Restrictions
+## AWS Academy の制限事項
 
-AWS Academy environments have limited IAM permissions. Specifically, you **cannot**:
-- Create IAM roles
-- Create IAM policies
-- Create RDS parameter groups (in some cases)
-- Create RDS subnet groups (in some cases)
-- Enable RDS enhanced monitoring (requires IAM roles)
+AWS Academy 環境では、IAM 権限が制限されています。具体的には、以下のことは**できません**:
+- IAM ロールまたはポリシーの作成
+- RDS 拡張モニタリングの有効化（IAM ロールが必要）
+- RDS の一部の高度な機能の使用（Performance Insights、カスタムパラメータグループ）
 
-## Modifications Made for AWS Academy
+## 現在のソリューション
 
-### 1. EC2 IAM Instance Profile
+このプロジェクトは、RDS の代わりに **専用 EC2 インスタンス上の MySQL** を使用しており、AWS Academy の制約内で完全に動作します。
 
-**Original**: Creates custom IAM role with SSM and CloudWatch permissions
+## AWS Academy 用に加えられた変更
+
+### 1. EC2 IAM インスタンスプロファイル
+
+**オリジナル**: SSM および CloudWatch 権限を持つカスタム IAM ロールを作成
 ```hcl
 resource "aws_iam_role" "web_instance" { ... }
 resource "aws_iam_instance_profile" "web" { ... }
 ```
 
-**Modified**: Uses existing `EC2InstanceProfile` provided by AWS Academy
+**変更後**: AWS Academy が提供する既存の `EC2InstanceProfile` を使用
 ```hcl
 data "aws_iam_instance_profile" "lab_profile" {
-  name = var.ec2_instance_profile_name  # Default: "EC2InstanceProfile"
+  name = var.ec2_instance_profile_name  # デフォルト: "EC2InstanceProfile"
 }
 ```
 
-**File**: `launch_template.tf`
+**ファイル**: `launch_template.tf`
 
-### 2. RDS Parameter Group
+### 2. データベースソリューション
 
-**Original**: Creates custom parameter group with UTF-8 settings
-```hcl
-resource "aws_db_parameter_group" "main" {
-  family = "mysql8.0"
-  # custom parameters
-}
+**オリジナル**: カスタムパラメータグループと拡張モニタリングを備えた RDS の使用を試行
+
+**変更後**: 代わりに専用 EC2 インスタンス上の MySQL を使用
+- IAM 制限なし（既存の EC2InstanceProfile を使用）
+- MySQL 構成の完全な制御
+- cron ジョブによる自動バックアップ
+- 詳細は [EC2_DATABASE.md](EC2_DATABASE.md) を参照
+
+## 一般的な問題と解決策
+
+### 問題: EC2 インスタンスプロファイルが見つからない
+
+**エラー**:
+```
+Error: Invalid IAM Instance Profile name
 ```
 
-**Modified**: Uses default MySQL 8.0 parameter group (removed resource)
-
-**File**: `rds.tf`
-
-### 3. RDS Enhanced Monitoring
-
-**Original**: Creates IAM role for enhanced monitoring
-```hcl
-resource "aws_iam_role" "rds_monitoring" { ... }
-monitoring_interval = 60
-```
-
-**Modified**: Disabled enhanced monitoring
-```hcl
-monitoring_interval = 0
-```
-
-**File**: `rds.tf`
-
-### 4. RDS Performance Insights
-
-**Original**: Enabled with 7-day retention
-```hcl
-performance_insights_enabled = true
-```
-
-**Modified**: Disabled (commented out)
-
-**File**: `rds.tf`
-
-### 5. RDS CloudWatch Logs
-
-**Original**: Exports error, general, and slow query logs
-```hcl
-enabled_cloudwatch_logs_exports = ["error", "general", "slowquery"]
-```
-
-**Modified**: Disabled (commented out)
-
-**File**: `rds.tf`
-
-## Potential Issues and Solutions
-
-### Issue: DB Subnet Group Creation Fails
-
-**Error**:
-```
-Error: creating RDS DB Subnet Group: AccessDenied
-```
-
-**Solution**:
-AWS Academy may restrict DB subnet group creation. If this occurs:
-
-1. Check if a default DB subnet group exists:
+**解決策**:
+AWS Academy 環境でインスタンスプロファイル名を確認してください:
 ```bash
-aws rds describe-db-subnet-groups
+aws iam list-instance-profiles
 ```
 
-2. If a default exists, modify `rds.tf` to use it:
+`terraform.tfvars` を更新します:
 ```hcl
-# Comment out the resource
-# resource "aws_db_subnet_group" "main" { ... }
-
-# Use default or existing subnet group
-resource "aws_db_instance" "main" {
-  # Remove or comment out this line:
-  # db_subnet_group_name = aws_db_subnet_group.main.name
-
-  # Or use existing group:
-  # db_subnet_group_name = "default"
-}
+ec2_instance_profile_name = "YourActualProfileName"  # 一般的な例: EC2InstanceProfile, LabInstanceProfile, Work-Role
 ```
 
-### Issue: Cannot Create Multi-AZ RDS
+## AWS Academy で利用可能な機能
 
-**Error**:
-```
-Error: operation error RDS: CreateDBInstance, AccessDenied
-```
+すべてのコア機能は AWS Academy の制約内で動作します:
 
-**Solution**:
-AWS Academy may restrict Multi-AZ deployments. Modify `rds.tf`:
-```hcl
-# Change from:
-multi_az = true
+✅ **マルチ AZ VPC アーキテクチャ** - パブリック/プライベートサブネットを持つ2つのアベイラビリティゾーン
+✅ **Application Load Balancer** - ヘルスチェック付きのインターネット向けロードバランサー
+✅ **Auto Scaling Group** - CPU ベースのスケーリング（2-6 Web インスタンス）
+✅ **EC2 上の MySQL データベース** - プライベートサブネット内の2つのインスタンス、自動バックアップ付き
+✅ **セキュリティグループ** - 適切なネットワーク分離と最小権限アクセス
+✅ **NAT ゲートウェイ** - プライベートサブネット用のアウトバウンドインターネットアクセス
+✅ **EBS 暗号化** - すべての EC2 インスタンスのボリュームを暗号化
+✅ **CloudWatch メトリクス** - すべてのリソースのモニタリング
+✅ **Session Manager** - インスタンスへの SSH レスアクセス
 
-# To:
-multi_az = false
-```
+## デプロイメントワークフロー
 
-Note: This reduces high availability but works within Academy constraints.
+1. **変数の設定**: AWS Academy の設定に合わせて `terraform.tfvars` を編集
+2. **初期化**: `terraform init` を実行
+3. **プラン**: `terraform plan` を実行して変更をプレビュー
+4. **適用**: `terraform apply` を実行してインフラストラクチャを作成
 
-### Issue: Storage Encryption Not Allowed
+権限エラーが発生した場合は、EC2 インスタンスプロファイル名が AWS Academy 環境と一致していることを確認してください。
 
-**Error**:
-```
-Error: storage_encrypted is not supported for db.t3.small
-```
+## 比較: フルバージョン vs AWS Academy バージョン
 
-**Solution**:
-Some AWS Academy environments restrict encryption. Modify `rds.tf`:
-```hcl
-# Change from:
-storage_encrypted = true
-
-# To:
-storage_encrypted = false
-```
-
-## Features Still Available
-
-Despite the restrictions, the following production-grade features still work:
-
-✅ **Multi-AZ VPC Architecture** - 2 availability zones with public/private subnets
-✅ **Application Load Balancer** - Internet-facing with health checks
-✅ **Auto Scaling Group** - CPU-based scaling (2-6 instances)
-✅ **Security Groups** - Proper network isolation and least-privilege access
-✅ **NAT Gateway** - Outbound internet access for private subnets
-✅ **RDS MySQL** - Database with automated backups (single-AZ in restricted mode)
-✅ **EBS Encryption** - Encrypted volumes for EC2 instances
-✅ **CloudWatch Metrics** - Basic monitoring for all resources
-
-## Recommended Testing Workflow
-
-1. **Start with Minimal Configuration**
-   ```bash
-   terraform plan
-   ```
-
-2. **If you encounter permission errors**, check which resource is failing
-
-3. **Modify the failing resource**:
-   - For IAM resources: Use existing AWS Academy resources
-   - For RDS features: Disable or use defaults
-   - For other services: Check AWS Academy documentation
-
-4. **Apply incrementally**:
-   ```bash
-   # Apply only specific resources
-   terraform apply -target=aws_vpc.main
-   terraform apply -target=aws_subnet.public
-   # etc.
-   ```
-
-## Comparison: Full vs AWS Academy Version
-
-| Feature | Full Version | AWS Academy Version |
+| 機能 | フルバージョン | AWS Academy バージョン |
 |---------|-------------|---------------------|
-| Custom IAM Roles | ✅ Created | ❌ Uses LabInstanceProfile |
-| RDS Parameter Group | ✅ Custom UTF-8 | ❌ Uses default |
-| RDS Enhanced Monitoring | ✅ 60-second interval | ❌ Disabled |
-| Performance Insights | ✅ 7-day retention | ❌ Disabled |
-| CloudWatch Logs Export | ✅ Error/General/Slow | ❌ Disabled |
-| Multi-AZ RDS | ✅ Enabled | ⚠️ May need to disable |
-| VPC & Networking | ✅ Full features | ✅ Full features |
-| ALB & Auto Scaling | ✅ Full features | ✅ Full features |
-| Security Groups | ✅ Full features | ✅ Full features |
+| カスタム IAM ロール | ✅ 作成される | ❌ EC2InstanceProfile を使用 |
+| データベース | ✅ RDS マルチ AZ | ✅ EC2 上の MySQL（2インスタンス） |
+| RDS 機能 | ✅ 拡張モニタリングなど | ➖ 該当なし（EC2 を使用） |
+| VPC & ネットワーク | ✅ 全機能 | ✅ 全機能 |
+| ALB & Auto Scaling | ✅ 全機能 | ✅ 全機能 |
+| セキュリティグループ | ✅ 全機能 | ✅ 全機能 |
+| EBS 暗号化 | ✅ 有効 | ✅ 有効 |
+| Session Manager | ✅ 有効 | ✅ 有効 |
 
-## Converting Back to Full Version
+## 標準 AWS アカウントへの変換
 
-If you deploy this to a standard AWS account (non-Academy), you can restore full features:
+標準の AWS アカウント（非 Academy）にデプロイする場合、オプションで以下を実行できます:
 
-1. Uncomment IAM role creation in `launch_template.tf`
-2. Uncomment RDS parameter group in `rds.tf`
-3. Re-enable enhanced monitoring, Performance Insights, and CloudWatch logs
-4. Set `multi_az = true` if it was changed
-5. Run `terraform plan` to see what will be added
+1. 既存の EC2InstanceProfile を使用する代わりに **カスタム IAM ロールを作成**
+2. **RDS マルチ AZ へのアップグレード**: EC2 ベースの MySQL をマネージド RDS に置き換え
+   - 自動マルチ AZ フェイルオーバーを提供
+   - 拡張モニタリングと Performance Insights
+   - 自動バックアップとポイントインタイムリカバリ
+3. `terraform plan` を実行して変更を確認
 
-## Additional Resources
+## 追加リソース
 
 - [AWS Academy Learner Lab](https://awsacademy.instructure.com/)
-- [AWS Academy IAM Restrictions](https://docs.aws.amazon.com/academy/)
-- [Terraform AWS Provider Documentation](https://registry.terraform.io/providers/hashicorp/aws/latest/docs)
+- [AWS Academy IAM 制限](https://docs.aws.amazon.com/academy/)
+- [Terraform AWS プロバイダードキュメント](https://registry.terraform.io/providers/hashicorp/aws/latest/docs)
 
-## Support
+## サポート
 
-If you encounter other AWS Academy restrictions not covered here:
-1. Check the error message for the specific permission denied
-2. Look for the AWS resource type (e.g., `iam:CreateRole`, `rds:CreateDBParameterGroup`)
-3. Determine if the resource can be:
-   - Removed (not critical)
-   - Replaced with existing AWS Academy resource
-   - Simplified to use default settings
+ここでカバーされていない他の AWS Academy の制限に遭遇した場合:
+1. 特定の権限拒否についてエラーメッセージを確認してください
+2. AWS リソースタイプを探してください（例: `iam:CreateRole`, `rds:CreateDBParameterGroup`）
+3. リソースが以下のようにできるか判断してください:
+   - 削除（重要でない場合）
+   - 既存の AWS Academy リソースへの置き換え
+   - デフォルト設定を使用するように簡素化
 
-Document your findings and update this file for future reference.
+調査結果を文書化し、将来の参照のためにこのファイルを更新してください。

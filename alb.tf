@@ -1,4 +1,4 @@
-# Application Load Balancer
+# アプリケーションロードバランサー
 resource "aws_lb" "main" {
   name               = "${var.project_name}-${var.environment}-alb"
   internal           = false
@@ -15,7 +15,7 @@ resource "aws_lb" "main" {
   }
 }
 
-# Target Group
+# ターゲットグループ
 resource "aws_lb_target_group" "web" {
   name     = "${var.project_name}-${var.environment}-tg"
   port     = 80
@@ -40,7 +40,7 @@ resource "aws_lb_target_group" "web" {
   }
 }
 
-# HTTP Listener
+# HTTP リスナー
 resource "aws_lb_listener" "http" {
   load_balancer_arn = aws_lb.main.arn
   port              = 80
@@ -52,7 +52,7 @@ resource "aws_lb_listener" "http" {
   }
 }
 
-# HTTPS Listener (commented out - uncomment when you have an ACM certificate)
+# HTTPS リスナー (コメントアウトされています - ACM 証明書がある場合にコメントを解除してください)
 # resource "aws_lb_listener" "https" {
 #   load_balancer_arn = aws_lb.main.arn
 #   port              = 443
@@ -66,7 +66,7 @@ resource "aws_lb_listener" "http" {
 #   }
 # }
 
-# HTTP to HTTPS redirect (uncomment when HTTPS is enabled)
+# HTTP から HTTPS へのリダイレクト (HTTPS が有効な場合にコメントを解除してください)
 # resource "aws_lb_listener" "http_redirect" {
 #   load_balancer_arn = aws_lb.main.arn
 #   port              = 80

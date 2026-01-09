@@ -1,96 +1,86 @@
-# VPC Outputs
+# VPC 出力
 output "vpc_id" {
-  description = "ID of the VPC"
+  description = "VPC の ID"
   value       = aws_vpc.main.id
 }
 
 output "vpc_cidr" {
-  description = "CIDR block of the VPC"
+  description = "VPC の CIDR ブロック"
   value       = aws_vpc.main.cidr_block
 }
 
-# Subnet Outputs
+# サブネット出力
 output "public_subnet_ids" {
-  description = "IDs of public subnets"
+  description = "パブリックサブネットの ID"
   value       = aws_subnet.public[*].id
 }
 
 output "private_subnet_ids" {
-  description = "IDs of private subnets"
+  description = "プライベートサブネットの ID"
   value       = aws_subnet.private[*].id
 }
 
-# NAT Gateway Output
+# NAT ゲートウェイ出力
 output "nat_gateway_ip" {
-  description = "Elastic IP address of NAT Gateway (for whitelisting)"
+  description = "NAT ゲートウェイの Elastic IP アドレス (ホワイトリスト登録用)"
   value       = aws_eip.nat.public_ip
 }
 
-# Application Load Balancer Outputs
-output "alb_dns_name" {
-  description = "DNS name of the Application Load Balancer (use this to access the application)"
-  value       = aws_lb.main.dns_name
+# アプリケーションロードバランサー出力
+output "alb_dns_url" {
+  description = "アプリケーションロードバランサーの DNS 名 (アプリケーションへのアクセスに使用)"
+  value       = "http://${aws_lb.main.dns_name}"
 }
 
 output "alb_arn" {
-  description = "ARN of the Application Load Balancer"
+  description = "アプリケーションロードバランサーの ARN"
   value       = aws_lb.main.arn
 }
 
 output "alb_zone_id" {
-  description = "Zone ID of the Application Load Balancer (for Route53 alias records)"
+  description = "アプリケーションロードバランサーのゾーン ID (Route53 エイリアスレコード用)"
   value       = aws_lb.main.zone_id
 }
 
-# Auto Scaling Group Outputs
+# オートスケーリンググループ出力
 output "web_asg_name" {
-  description = "Name of the Auto Scaling Group"
+  description = "オートスケーリンググループの名前"
   value       = aws_autoscaling_group.web.name
 }
 
 output "web_asg_arn" {
-  description = "ARN of the Auto Scaling Group"
+  description = "オートスケーリンググループの ARN"
   value       = aws_autoscaling_group.web.arn
 }
 
-# RDS Outputs
-output "rds_endpoint" {
-  description = "Connection endpoint for RDS database"
-  value       = var.create_rds ? aws_db_instance.main[0].endpoint : "RDS not created"
-}
-
-output "rds_address" {
-  description = "Hostname of the RDS instance"
-  value       = var.create_rds ? aws_db_instance.main[0].address : "RDS not created"
-}
-
-output "rds_port" {
-  description = "Port of the RDS instance"
-  value       = var.create_rds ? aws_db_instance.main[0].port : 0
-}
-
-output "rds_database_name" {
-  description = "Name of the database"
-  value       = var.create_rds ? aws_db_instance.main[0].db_name : "RDS not created"
-}
-
-output "rds_arn" {
-  description = "ARN of the RDS instance"
-  value       = var.create_rds ? aws_db_instance.main[0].arn : "RDS not created"
-}
-
-# Security Group Outputs
+# セキュリティグループ出力
 output "alb_security_group_id" {
-  description = "ID of the ALB security group"
+  description = "ALB セキュリティグループの ID"
   value       = aws_security_group.alb.id
 }
 
 output "web_security_group_id" {
-  description = "ID of the web instance security group"
+  description = "Web インスタンスセキュリティグループの ID"
   value       = aws_security_group.web.id
 }
 
 output "rds_security_group_id" {
-  description = "ID of the RDS security group"
+  description = "RDS セキュリティグループの ID"
   value       = aws_security_group.rds.id
+}
+
+# 負荷テストインスタンス出力 (var.run_load_test = true の場合のみ利用可能)
+output "test_instance_public_ip" {
+  description = "負荷テストインスタンスのパブリック IP アドレス (http://TEST_IP 経由でアクセス)"
+  value       = var.run_load_test ? aws_instance.test[0].public_ip : null
+}
+
+output "test_instance_id" {
+  description = "負荷テストインスタンスのインスタンス ID"
+  value       = var.run_load_test ? aws_instance.test[0].id : null
+}
+
+output "test_instance_url" {
+  description = "負荷テストダッシュボードにアクセスするための URL"
+  value       = var.run_load_test ? "http://${aws_instance.test[0].public_ip}" : "Load testing disabled - set run_load_test = true to enable"
 }

@@ -1,12 +1,12 @@
-# Terraform Backend Configuration
+# Terraform バックエンド設定
 #
-# IMPORTANT: Before uncommenting this configuration, you must:
-# 1. Create an S3 bucket for state storage with versioning enabled
-# 2. Create a DynamoDB table with partition key "LockID" (String) for state locking
-# 3. Update the bucket and dynamodb_table values below
-# 4. Run: terraform init -migrate-state
+# 重要: この設定のコメントを解除する前に、以下を行う必要があります:
+# 1. バージョニングを有効にしたステート保存用の S3 バケットを作成する
+# 2. ステートロック用にパーティションキー "LockID" (String) を持つ DynamoDB テーブルを作成する
+# 3. 以下の bucket と dynamodb_table の値を更新する
+# 4. 実行: terraform init -migrate-state
 #
-# Example AWS CLI commands to create resources:
+# リソースを作成するための AWS CLI コマンドの例:
 #
 # aws s3api create-bucket --bucket YOUR-BUCKET-NAME --region us-east-1
 # aws s3api put-bucket-versioning --bucket YOUR-BUCKET-NAME --versioning-configuration Status=Enabled

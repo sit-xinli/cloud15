@@ -19,26 +19,26 @@ web_instance_type         = "t3.small"
 ec2_instance_profile_name = "Work-Role" # AWS Academy: Use existing profile
 
 # Auto Scaling Configuration
+# For FAST load testing: scales quickly from 1 to 5 instances
 asg_min_size                  = 2
-asg_max_size                  = 6
+asg_max_size                  = 5
 asg_desired_capacity          = 2
-asg_health_check_grace_period = 300
-asg_target_cpu_utilization    = 70
+asg_health_check_grace_period = 180
+asg_target_cpu_utilization    = 50  # Lower threshold = faster scaling
 
 # Database Configuration
-# AWS Academy: Install MySQL directly on web servers (no separate DB instance)
-create_rds                 = false # AWS Academy: No RDS permissions
-create_ec2_db              = true # AWS Academy blocks EC2 instance creation
-db_instance_class          = "db.t3.small"
-db_name                    = "webapp"
-db_username                = "admin"
-db_password                = "CHANGE_ME_TO_STRONG_PASSWORD" # IMPORTANT: Use a strong password!
-db_allocated_storage       = 20
-db_max_allocated_storage   = 100
-db_backup_retention_period = 7
-db_backup_window           = "03:00-04:00"
-db_maintenance_window      = "Mon:04:00-Mon:05:00"
-db_skip_final_snapshot     = true # AWS Academy: Set to true to avoid snapshot issues
+# MySQL on dedicated EC2 instances (always created)
+db_name             = "webapp"
+db_username         = "admin"
+db_password         = "CHANGE_ME_TO_STRONG_PASSWORD" # IMPORTANT: Use a strong password!
+db_ec2_instance_type = "t3.small"
+db_ec2_volume_size  = 30
+
+# Load Testing - creates instance and starts load testing automatically
+run_load_test          = true
+test_instance_type     = "t3.small"  # More powerful for aggressive load generation
+load_test_concurrency  = 200         # 200 concurrent connections (very aggressive)
+load_test_duration     = 0           # Continuous load (no breaks)
 
 # Backend Configuration (Optional - for documentation)
 # Update these values in backend.tf when ready to use remote state

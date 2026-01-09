@@ -1,293 +1,293 @@
-# AWS Multi-Tier Architecture Documentation
+# AWS マルチティアアーキテクチャドキュメント
 
-## Architecture Overview
+## アーキテクチャ概要
 
-This document describes a highly available, multi-tier AWS infrastructure designed for production web applications. The architecture implements best practices for availability, security, and scalability.
+このドキュメントでは、本番環境の Web アプリケーション向けに設計された、高可用性マルチティア AWS インフラストラクチャについて説明します。このアーキテクチャは、可用性、セキュリティ、スケーラビリティに関するベストプラクティスを実装しています。
 
-## Architecture Diagram
+## アーキテクチャ図
 
 ![AWS Architecture](architecture.png)
 
-## Architecture Components
+## アーキテクチャコンポーネント
 
-### 1. Network Infrastructure
+### 1. ネットワークインフラストラクチャ
 
 #### VPC (Virtual Private Cloud)
-- **CIDR Block**: 10.0.0.0/16
-- **DNS Resolution**: Enabled
-- **DNS Hostnames**: Enabled
-- **Purpose**: Isolated network environment for all resources
+- **CIDR ブロック**: 10.0.0.0/16
+- **DNS 解決**: 有効
+- **DNS ホスト名**: 有効
+- **目的**: すべてのリソースのための隔離されたネットワーク環境
 
-#### Availability Zones
-The infrastructure spans **two Availability Zones** within a single AWS region:
-- **Availability Zone A**: Primary zone
-- **Availability Zone B**: Secondary zone for redundancy
+#### アベイラビリティゾーン
+インフラストラクチャは、単一の AWS リージョン内の **2つのアベイラビリティゾーン** にまたがっています:
+- **アベイラビリティゾーン A**: プライマリゾーン
+- **アベイラビリティゾーン B**: 冗長性のためのセカンダリゾーン
 
-#### Subnets
+#### サブネット
 
-| Subnet Name | Type | CIDR | Availability Zone | Purpose |
+| サブネット名 | タイプ | CIDR | アベイラビリティゾーン | 目的 |
 |-------------|------|------|-------------------|---------|
-| Public Subnet 1 | Public | 10.0.0.0/24 | AZ-A | NAT Gateway, ALB |
-| Private Subnet 1 | Private | 10.0.1.0/24 | AZ-A | Web instances, RDS Primary |
-| Public Subnet 2 | Public | 10.0.2.0/24 | AZ-B | ALB |
-| Private Subnet 2 | Private | 10.0.3.0/24 | AZ-B | Web instances, RDS Secondary |
+| パブリックサブネット 1 | パブリック | 10.0.0.0/24 | AZ-A | NAT ゲートウェイ, ALB |
+| プライベートサブネット 1 | プライベート | 10.0.1.0/24 | AZ-A | Web インスタンス, RDS プライマリ |
+| パブリックサブネット 2 | パブリック | 10.0.2.0/24 | AZ-B | ALB |
+| プライベートサブネット 2 | プライベート | 10.0.3.0/24 | AZ-B | Web インスタンス, RDS セカンダリ |
 
-**Public Subnets**:
-- Have routes to Internet Gateway
-- Used for resources that need direct internet access
-- Host NAT Gateway and Application Load Balancer
+**パブリックサブネット**:
+- インターネットゲートウェイへのルートを持つ
+- 直接インターネットアクセスが必要なリソースに使用
+- NAT ゲートウェイと Application Load Balancer をホスト
 
-**Private Subnets**:
-- Route internet-bound traffic through NAT Gateway
-- Isolated from direct internet access
-- Host application instances and databases
+**プライベートサブネット**:
+- インターネット向けトラフィックを NAT ゲートウェイ経由でルーティング
+- 直接のインターネットアクセスから隔離
+- アプリケーションインスタンスとデータベースをホスト
 
-#### Internet Gateway
-- Attached to VPC
-- Enables internet connectivity for public subnets
-- Used by resources in public subnets for inbound/outbound traffic
+#### インターネットゲートウェイ
+- VPC にアタッチ
+- パブリックサブネットのインターネット接続を有効化
+- パブリックサブネット内のリソースがインバウンド/アウトバウンドトラフィックに使用
 
-#### NAT Gateway
-- **Location**: Public Subnet 1 (AZ-A)
-- **Purpose**: Provides outbound internet access for private subnets
-- **Elastic IP**: Required for static public IP address
-- **Note**: Single NAT Gateway design for cost optimization. For production, consider Multi-AZ NAT Gateways.
+#### NAT ゲートウェイ
+- **場所**: パブリックサブネット 1 (AZ-A)
+- **目的**: プライベートサブネットのアウトバウンドインターネットアクセスを提供
+- **Elastic IP**: 静的パブリック IP アドレスが必要
+- **注記**: コスト最適化のための単一 NAT ゲートウェイ設計。本番環境では、マルチ AZ NAT ゲートウェイを検討してください。
 
-#### Route Tables
+#### ルートテーブル
 
-**Public Route Table**:
-- Associated with Public Subnets (10.0.0.0/24, 10.0.2.0/24)
-- Routes:
-  - `10.0.0.0/16` → Local (VPC)
-  - `0.0.0.0/0` → Internet Gateway
+**パブリックルートテーブル**:
+- パブリックサブネットに関連付け (10.0.0.0/24, 10.0.2.0/24)
+- ルート:
+  - `10.0.0.0/16` → ローカル (VPC)
+  - `0.0.0.0/0` → インターネットゲートウェイ
 
-**Private Route Table**:
-- Associated with Private Subnets (10.0.1.0/24, 10.0.3.0/24)
-- Routes:
-  - `10.0.0.0/16` → Local (VPC)
-  - `0.0.0.0/0` → NAT Gateway (in AZ-A)
+**プライベートルートテーブル**:
+- プライベートサブネットに関連付け (10.0.1.0/24, 10.0.3.0/24)
+- ルート:
+  - `10.0.0.0/16` → ローカル (VPC)
+  - `0.0.0.0/0` → NAT ゲートウェイ (AZ-A 内)
 
 ### 2. Application Load Balancer (ALB)
 
-- **Type**: Application Load Balancer (Layer 7)
-- **Scheme**: Internet-facing
-- **Subnets**: Deployed across both public subnets (AZ-A and AZ-B)
-- **Security**: Configured with security group allowing HTTP/HTTPS traffic
-- **Target**: Auto Scaling Group instances in private subnets
-- **Health Checks**: Monitors instance health and routes traffic only to healthy instances
+- **タイプ**: Application Load Balancer (レイヤー 7)
+- **スキーム**: インターネット向け
+- **サブネット**: 両方のパブリックサブネット (AZ-A および AZ-B) にデプロイ
+- **セキュリティ**: HTTP/HTTPS トラフィックを許可するセキュリティグループで構成
+- **ターゲット**: プライベートサブネット内の Auto Scaling Group インスタンス
+- **ヘルスチェック**: インスタンスの健全性を監視し、健全なインスタンスにのみトラフィックをルーティング
 
-**Key Features**:
-- Cross-zone load balancing
-- Connection draining
-- Sticky sessions (if needed)
-- SSL/TLS termination
-- Path-based or host-based routing
+**主な機能**:
+- クロスゾーン負荷分散
+- 接続ドレイニング
+- スティッキーセッション (必要な場合)
+- SSL/TLS ターミネーション
+- パスベースまたはホストベースのルーティング
 
 ### 3. Auto Scaling Group
 
-- **Deployment**: Spans both Availability Zones (AZ-A and AZ-B)
-- **Subnets**: Private Subnet 1 and Private Subnet 2
-- **Target**: Registered with Application Load Balancer
-- **Scaling**: Dynamic scaling based on metrics (CPU, network, custom metrics)
+- **デプロイ**: 両方のアベイラビリティゾーン (AZ-A および AZ-B) にまたがる
+- **サブネット**: プライベートサブネット 1 およびプライベートサブネット 2
+- **ターゲット**: Application Load Balancer に登録
+- **スケーリング**: メトリクス (CPU、ネットワーク、カスタムメトリクス) に基づく動的スケーリング
 
-**Configuration**:
-- **Minimum Size**: Configurable (e.g., 2 instances)
-- **Desired Capacity**: Configurable (e.g., 2 instances)
-- **Maximum Size**: Configurable (e.g., 6 instances)
-- **Health Check Type**: ELB health checks
-- **Health Check Grace Period**: 300 seconds (typical)
+**構成**:
+- **最小サイズ**: 構成可能 (例: 2 インスタンス)
+- **希望する容量**: 構成可能 (例: 2 インスタンス)
+- **最大サイズ**: 構成可能 (例: 6 インスタンス)
+- **ヘルスチェックタイプ**: ELB ヘルスチェック
+- **ヘルスチェック猶予期間**: 300 秒 (一般的)
 
-**Auto Scaling Policies**:
-- Scale up when average CPU > 70%
-- Scale down when average CPU < 30%
-- Target tracking or step scaling policies
+**Auto Scaling ポリシー**:
+- 平均 CPU > 70% でスケールアップ
+- 平均 CPU < 30% でスケールダウン
+- ターゲット追跡またはステップスケーリングポリシー
 
-### 4. Web Application Instances
+### 4. Web アプリケーションインスタンス
 
-- **Location**: Private Subnets (AZ-A and AZ-B)
-- **Launch Template**: Defines instance configuration
-- **Security Group**: Web Instance Security Group
-- **Instance Type**: Configurable (e.g., t3.micro, t3.small)
-- **AMI**: Application-specific AMI (Amazon Linux 2, Ubuntu, etc.)
+- **場所**: プライベートサブネット (AZ-A および AZ-B)
+- **起動テンプレート**: インスタンス構成を定義
+- **セキュリティグループ**: Web インスタンスセキュリティグループ
+- **インスタンスタイプ**: 構成可能 (例: t3.micro, t3.small)
+- **AMI**: アプリケーション固有の AMI (Amazon Linux 2, Ubuntu など)
 
-**Security Group Rules** (Web Instance):
-- **Inbound**:
-  - HTTP (80) from ALB Security Group
-  - HTTPS (443) from ALB Security Group
-  - SSH (22) from Bastion/VPN (optional)
-- **Outbound**:
-  - All traffic to 0.0.0.0/0 (for updates, external API calls)
+**セキュリティグループルール** (Web インスタンス):
+- **インバウンド**:
+  - HTTP (80) ALB セキュリティグループから
+  - HTTPS (443) ALB セキュリティグループから
+  - SSH (22) Bastion/VPN から (オプション)
+- **アウトバウンド**:
+  - 0.0.0.0/0 へのすべてのトラフィック (更新、外部 API 呼び出し用)
 
-### 5. RDS Database (Multi-AZ)
+### 5. RDS データベース (マルチ AZ)
 
-- **Engine**: Configurable (MySQL, PostgreSQL, etc.)
-- **Deployment**: Multi-AZ for high availability
-- **Primary Instance**: Private Subnet 1 (AZ-A)
-- **Standby Instance**: Private Subnet 2 (AZ-B)
-- **Subnet Group**: RDS subnet group spanning both private subnets
+- **エンジン**: 構成可能 (MySQL, PostgreSQL など)
+- **デプロイ**: 高可用性のためのマルチ AZ
+- **プライマリインスタンス**: プライベートサブネット 1 (AZ-A)
+- **スタンバイインスタンス**: プライベートサブネット 2 (AZ-B)
+- **サブネットグループ**: 両方のプライベートサブネットにまたがる RDS サブネットグループ
 
-**Multi-AZ Features**:
-- Automatic failover to standby instance
-- Synchronous replication
-- No manual intervention required
-- Single DNS endpoint (automatic failover)
+**マルチ AZ 機能**:
+- スタンバイインスタンスへの自動フェイルオーバー
+- 同期レプリケーション
+- 手動介入不要
+- 単一の DNS エンドポイント (自動フェイルオーバー)
 
-**Security Groups**:
-- **RDS Primary Security Group** (AZ-A)
-- **RDS Secondary Security Group** (AZ-B)
-- **Rules**:
-  - Inbound: Database port (e.g., 3306 for MySQL, 5432 for PostgreSQL) from Web Instance Security Group
-  - Outbound: Not required (database doesn't initiate outbound connections)
+**セキュリティグループ**:
+- **RDS プライマリセキュリティグループ** (AZ-A)
+- **RDS セカンダリセキュリティグループ** (AZ-B)
+- **ルール**:
+  - インバウンド: Web インスタンスセキュリティグループからのデータベースポート (例: MySQL の場合は 3306、PostgreSQL の場合は 5432)
+  - アウトバウンド: 不要 (データベースはアウトバウンド接続を開始しないため)
 
-**Database Configuration**:
-- **Instance Class**: Configurable (db.t3.micro, db.t3.small, etc.)
-- **Storage**: GP3 or io1 for production workloads
-- **Backup**: Automated backups enabled
-- **Backup Retention**: 7-30 days
-- **Encryption**: Enabled at rest
-- **Enhanced Monitoring**: Enabled
+**データベース構成**:
+- **インスタンスクラス**: 構成可能 (db.t3.micro, db.t3.small など)
+- **ストレージ**: 本番ワークロードには GP3 または io1
+- **バックアップ**: 自動バックアップ有効
+- **バックアップ保持期間**: 7-30 日
+- **暗号化**: 保存時の暗号化有効
+- **拡張モニタリング**: 有効
 
-### 6. Security Groups
+### 6. セキュリティグループ
 
-#### Web Instance Security Group
-- **Purpose**: Controls traffic to web application instances
-- **Inbound Rules**:
-  - Port 80 (HTTP) from ALB Security Group
-  - Port 443 (HTTPS) from ALB Security Group
-- **Outbound Rules**:
-  - All traffic to 0.0.0.0/0 (internet access via NAT Gateway)
-  - Database port to RDS Security Groups
+#### Web インスタンスセキュリティグループ
+- **目的**: Web アプリケーションインスタンスへのトラフィックを制御
+- **インバウンドルール**:
+  - ポート 80 (HTTP) ALB セキュリティグループから
+  - ポート 443 (HTTPS) ALB セキュリティグループから
+- **アウトバウンドルール**:
+  - 0.0.0.0/0 へのすべてのトラフィック (NAT ゲートウェイ経由のインターネットアクセス)
+  - RDS セキュリティグループへのデータベースポート
 
-#### ALB Security Group
-- **Purpose**: Controls traffic to Application Load Balancer
-- **Inbound Rules**:
-  - Port 80 (HTTP) from 0.0.0.0/0
-  - Port 443 (HTTPS) from 0.0.0.0/0
-- **Outbound Rules**:
-  - Port 80 to Web Instance Security Group
-  - Port 443 to Web Instance Security Group
+#### ALB セキュリティグループ
+- **目的**: Application Load Balancer へのトラフィックを制御
+- **インバウンドルール**:
+  - ポート 80 (HTTP) 0.0.0.0/0 から
+  - ポート 443 (HTTPS) 0.0.0.0/0 から
+- **アウトバウンドルール**:
+  - ポート 80 Web インスタンスセキュリティグループへ
+  - ポート 443 Web インスタンスセキュリティグループへ
 
-#### RDS Security Groups
-- **Purpose**: Controls traffic to database instances
-- **Inbound Rules**:
-  - Database port (e.g., 3306, 5432) from Web Instance Security Group
-- **Outbound Rules**:
-  - None required
+#### RDS セキュリティグループ
+- **目的**: データベースインスタンスへのトラフィックを制御
+- **インバウンドルール**:
+  - データベースポート (例: 3306, 5432) Web インスタンスセキュリティグループから
+- **アウトバウンドルール**:
+  - なし
 
-## Traffic Flow
+## トラフィックフロー
 
-### Inbound Traffic (User Request)
-1. User request arrives at **Internet Gateway**
-2. Traffic routes to **Application Load Balancer** in public subnets
-3. ALB performs health checks and selects healthy target
-4. Request forwarded to **Web Instance** in private subnet (AZ-A or AZ-B)
-5. Web instance processes request
-6. If database access needed, web instance connects to **RDS endpoint**
-7. Response returns through same path
+### インバウンドトラフィック (ユーザーリクエスト)
+1. ユーザーリクエストが **インターネットゲートウェイ** に到着
+2. トラフィックはパブリックサブネット内の **Application Load Balancer** にルーティング
+3. ALB はヘルスチェックを実行し、健全なターゲットを選択
+4. リクエストはプライベートサブネット (AZ-A または AZ-B) 内の **Web インスタンス** に転送
+5. Web インスタンスがリクエストを処理
+6. データベースアクセスが必要な場合、Web インスタンスは **RDS エンドポイント** に接続
+7. レスポンスは同じパスを通って戻る
 
-### Outbound Traffic (Instance Updates, API Calls)
-1. Web instance in private subnet initiates outbound request
-2. Traffic routes to **NAT Gateway** in Public Subnet 1
-3. NAT Gateway forwards traffic through **Internet Gateway**
-4. Response returns through NAT Gateway to web instance
+### アウトバウンドトラフィック (インスタンス更新、API 呼び出し)
+1. プライベートサブネット内の Web インスタンスがアウトバウンドリクエストを開始
+2. トラフィックはパブリックサブネット 1 内の **NAT ゲートウェイ** にルーティング
+3. NAT ゲートウェイは **インターネットゲートウェイ** 経由でトラフィックを転送
+4. レスポンスは NAT ゲートウェイを通って Web インスタンスに戻る
 
-### Database Replication (Multi-AZ)
-1. Write operations sent to **RDS Primary** (AZ-A)
-2. Data synchronously replicated to **RDS Standby** (AZ-B)
-3. Standby remains ready for automatic failover
-4. Single DNS endpoint automatically points to active instance
+### データベースレプリケーション (マルチ AZ)
+1. 書き込み操作は **RDS プライマリ** (AZ-A) に送信
+2. データは **RDS スタンバイ** (AZ-B) に同期的にレプリケート
+3. スタンバイは自動フェイルオーバーの準備ができている状態を維持
+4. 単一の DNS エンドポイントが自動的にアクティブなインスタンスを指す
 
-## High Availability Design
+## 高可用性設計
 
-### Availability Zone Redundancy
-- All tiers deployed across two AZs
-- Failure of single AZ does not impact application availability
-- Auto Scaling maintains desired capacity across healthy AZs
+### アベイラビリティゾーンの冗長性
+- すべてのティアが2つの AZ にまたがってデプロイ
+- 単一の AZ の障害がアプリケーションの可用性に影響を与えない
+- Auto Scaling は健全な AZ 全体で希望する容量を維持
 
-### Database Failover
-- Multi-AZ RDS provides automatic failover
-- Typical failover time: 60-120 seconds
-- No data loss due to synchronous replication
-- Application reconnects automatically using same endpoint
+### データベースフェイルオーバー
+- マルチ AZ RDS は自動フェイルオーバーを提供
+- 一般的なフェイルオーバー時間: 60-120 秒
+- 同期レプリケーションによるデータ損失なし
+- アプリケーションは同じエンドポイントを使用して自動的に再接続
 
-### Load Balancer Health Checks
-- Continuous monitoring of instance health
-- Unhealthy instances removed from rotation
-- Auto Scaling launches replacement instances
-- Zero downtime for instance failures
+### ロードバランサーヘルスチェック
+- インスタンスの健全性の継続的な監視
+- 異常なインスタンスはローテーションから除外
+- Auto Scaling は代替インスタンスを起動
+- インスタンス障害時のダウンタイムゼロ
 
-## Security Considerations
+## セキュリティに関する考慮事項
 
-### Network Isolation
-- **Public/Private Subnet Separation**: Application and database tiers isolated in private subnets
-- **No Direct Internet Access**: Private resources access internet only through NAT Gateway
-- **Security Group Segmentation**: Each tier has dedicated security groups with minimal required access
+### ネットワーク分離
+- **パブリック/プライベートサブネットの分離**: アプリケーションとデータベース層はプライベートサブネットに隔離
+- **直接のインターネットアクセスなし**: プライベートリソースは NAT ゲートウェイ経由でのみインターネットにアクセス
+- **セキュリティグループによるセグメンテーション**: 各層には必要最小限のアクセスのみ許可する専用のセキュリティグループ
 
-### Encryption
-- **In Transit**: Use HTTPS/TLS for ALB and application communication
-- **At Rest**: Enable RDS encryption
-- **Secrets**: Use AWS Secrets Manager or Parameter Store for credentials
+### 暗号化
+- **転送中**: ALB とアプリケーション通信に HTTPS/TLS を使用
+- **保存時**: RDS 暗号化を有効化
+- **シークレット**: 認証情報には AWS Secrets Manager または Parameter Store を使用
 
-### Access Control
-- **IAM Roles**: Use instance profiles for AWS service access
-- **No Hardcoded Credentials**: Use IAM roles and secrets management
-- **Least Privilege**: Security groups allow only required ports/protocols
+### アクセス制御
+- **IAM ロール**: AWS サービスアクセスにインスタンスプロファイルを使用
+- **ハードコードされた認証情報なし**: IAM ロールとシークレット管理を使用
+- **最小権限**: セキュリティグループは必要なポート/プロトコルのみ許可
 
-## Scalability
+## スケーラビリティ
 
-### Horizontal Scaling
-- Auto Scaling Group automatically adds/removes instances
-- Load Balancer distributes traffic across all healthy instances
-- Stateless application design recommended for seamless scaling
+### 水平スケーリング
+- Auto Scaling Group は自動的にインスタンスを追加/削除
+- ロードバランサーはすべての健全なインスタンスにトラフィックを分散
+- シームレスなスケーリングのためにステートレスアプリケーション設計を推奨
 
-### Database Scaling
-- **Vertical Scaling**: Upgrade RDS instance class for more CPU/memory
-- **Read Replicas**: Add read replicas for read-heavy workloads
-- **Connection Pooling**: Use RDS Proxy for connection management at scale
+### データベーススケーリング
+- **垂直スケーリング**: CPU/メモリを増やすために RDS インスタンスクラスをアップグレード
+- **リードレプリカ**: 読み取り負荷の高いワークロード用にリードレプリカを追加
+- **接続プーリング**: 大規模環境での接続管理に RDS Proxy を使用
 
-## Cost Optimization Considerations
+## コスト最適化の考慮事項
 
-### Current Design
-- Single NAT Gateway (instead of one per AZ)
-- Auto Scaling matches capacity to demand
+### 現在の設計
+- 単一の NAT ゲートウェイ (AZ ごとに1つではなく)
+- 需要に合わせて容量を調整する Auto Scaling
 
-### Recommendations
-- Use Reserved Instances or Savings Plans for predictable baseline
-- Enable RDS storage autoscaling
-- Consider Aurora Serverless for variable workloads
-- Use CloudWatch metrics to right-size instances
+### 推奨事項
+- 予測可能なベースラインにはリザーブドインスタンスまたは Savings Plans を使用
+- RDS ストレージの自動スケーリングを有効化
+- 変動するワークロードには Aurora Serverless を検討
+- CloudWatch メトリクスを使用してインスタンスサイズを適正化
 
-## Disaster Recovery
+## 災害復旧
 
-### Backup Strategy
-- **RDS Automated Backups**: Daily snapshots with point-in-time recovery
-- **Snapshot Retention**: 7-30 days
-- **Cross-Region Replication**: Consider for disaster recovery
+### バックアップ戦略
+- **RDS 自動バックアップ**: ポイントインタイムリカバリによる毎日のスナップショット
+- **スナップショット保持期間**: 7-30 日
+- **クロスリージョンレプリケーション**: 災害復旧のために検討
 
-### Recovery Objectives
-- **RTO (Recovery Time Objective)**: ~2-5 minutes (automatic Multi-AZ failover)
-- **RPO (Recovery Point Objective)**: ~0 seconds (synchronous replication)
+### 目標復旧
+- **RTO (目標復旧時間)**: 〜2-5 分 (自動マルチ AZ フェイルオーバー)
+- **RPO (目標復旧時点)**: 〜0 秒 (同期レプリケーション)
 
-## Monitoring and Logging
+## 監視とロギング
 
-### CloudWatch Metrics
-- ALB metrics: Request count, latency, healthy host count
-- Auto Scaling metrics: CPU utilization, network traffic
-- RDS metrics: CPU, IOPS, connections, replication lag
+### CloudWatch メトリクス
+- ALB メトリクス: リクエスト数、レイテンシ、健全なホスト数
+- Auto Scaling メトリクス: CPU 使用率、ネットワークトラフィック
+- RDS メトリクス: CPU、IOPS、接続数、レプリケーションラグ
 
-### Logging
-- **VPC Flow Logs**: Network traffic analysis
-- **ALB Access Logs**: Request-level logging
-- **RDS Logs**: Error logs, slow query logs
-- **CloudTrail**: API activity logging
+### ロギング
+- **VPC フローログ**: ネットワークトラフィック分析
+- **ALB アクセスログ**: リクエストレベルのロギング
+- **RDS ログ**: エラーログ、スロークエリログ
+- **CloudTrail**: API アクティビティロギング
 
-## Future Enhancements
+## 将来の拡張
 
-1. **Add WAF (Web Application Firewall)** to ALB for application-layer protection
-2. **Deploy NAT Gateway in AZ-B** for higher availability
-3. **Add Bastion Host** or **AWS Systems Manager Session Manager** for secure instance access
-4. **Implement CloudFront CDN** for static content delivery
-5. **Add ElastiCache** for application caching layer
-6. **Configure RDS Read Replicas** for read scaling
-7. **Implement AWS Backup** for centralized backup management
-8. **Add Route53 Health Checks** for DNS failover
+1. アプリケーション層の保護のために ALB に **WAF (Web Application Firewall)** を追加
+2. より高い可用性のために **AZ-B に NAT ゲートウェイ** をデプロイ
+3. 安全なインスタンスアクセスのために **Bastion Host** または **AWS Systems Manager Session Manager** を追加
+4. 静的コンテンツ配信のために **CloudFront CDN** を実装
+5. アプリケーションキャッシング層のために **ElastiCache** を追加
+6. 読み取りスケーリングのために **RDS リードレプリカ** を構成
+7. 一元化されたバックアップ管理のために **AWS Backup** を実装
+8. DNS フェイルオーバーのために **Route53 ヘルスチェック** を追加

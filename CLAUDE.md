@@ -1,202 +1,210 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+このファイルは、このリポジトリのコードを操作する際の Claude Code (claude.ai/code) へのガイダンスを提供します。
 
-## Project Overview
+## プロジェクト概要
 
-This is a Terraform project that deploys a highly available, multi-tier AWS infrastructure across two Availability Zones. The architecture implements a production-ready web application environment with load balancing, auto-scaling, and Multi-AZ RDS database.
+これは、2つのアベイラビリティゾーンにまたがる高可用性マルチティア AWS インフラストラクチャをデプロイする Terraform プロジェクトです。アーキテクチャは、ロードバランシング、オートスケーリング、マルチ AZ RDS データベースを備えた、本番環境に対応した Web アプリケーション環境を実装しています。
 
-**For detailed architecture documentation, see [architecture.md](architecture.md).**
+**詳細なアーキテクチャドキュメントについては、[architecture.md](architecture.md) を参照してください。**
 
-**For AWS Academy compatibility notes, see [AWS_ACADEMY.md](AWS_ACADEMY.md).**
+**AWS Academy との互換性に関する注意事項については、[AWS_ACADEMY.md](AWS_ACADEMY.md) を参照してください。**
 
-### AWS Academy Compatibility
+### AWS Academy 互換性
 
-This project has been modified to work with AWS Academy's restricted IAM permissions:
-- Uses existing `EC2InstanceProfile` instead of creating IAM roles
-- Disabled RDS enhanced monitoring, Performance Insights, and custom parameter groups
-- All core networking, ALB, Auto Scaling, and basic RDS features remain functional
+このプロジェクトは、AWS Academy の制限された IAM 権限で動作するように変更されています:
+- IAM ロールを作成する代わりに、既存の `EC2InstanceProfile` を使用
+- RDS 拡張モニタリング、Performance Insights、カスタムパラメータグループを無効化
+- すべてのコアネットワーク、ALB、Auto Scaling、および基本的な RDS 機能は引き続き機能します
 
-See [AWS_ACADEMY.md](AWS_ACADEMY.md) for detailed modifications and troubleshooting.
+詳細な変更点とトラブルシューティングについては、[AWS_ACADEMY.md](AWS_ACADEMY.md) を参照してください。
 
-## Common Commands
+## Auto Scaling 設定
 
-### Terraform Operations
+ASG（Auto Scaling Group）は、負荷に応じて **1 から 5 インスタンス** までスケールするように構成されています:
+- **最小**: 1 インスタンス（アイドル時のコスト削減）
+- **最大**: 5 インスタンス（ピーク負荷への対応）
+- **トリガー**: CPU > 70% または リクエスト数 > 1000/インスタンス
+
+## 一般的なコマンド
+
+### Terraform 操作
 
 ```bash
-# Initialize Terraform (download providers and modules)
+# Terraform の初期化（プロバイダーとモジュールのダウンロード）
 terraform init
 
-# Format Terraform files
+# Terraform ファイルのフォーマット
 terraform fmt -recursive
 
-# Validate configuration
+# 設定の検証
 terraform validate
 
-# Plan changes (dry-run)
+# 変更の計画（ドライラン）
 terraform plan
 
-# Plan with variable file
+# 変数ファイルを指定して計画
 terraform plan -var-file="terraform.tfvars"
 
-# Apply changes
+# 変更の適用
 terraform apply
 
-# Apply without confirmation prompt
+# 確認プロンプトなしで適用
 terraform apply -auto-approve
 
-# Destroy infrastructure
+# インフラストラクチャの破棄
 terraform destroy
 
-# Show current state
+# 現在の状態を表示
 terraform show
 
-# List resources in state
+# 状態内のリソースをリスト
 terraform state list
 
-# Output values
+# 出力値
 terraform output
 ```
 
-### Testing and Linting
+### テストとリンティング
 
 ```bash
-# Run tflint (if installed)
+# tflint の実行（インストールされている場合）
 tflint
 
-# Run terraform fmt check
+# terraform fmt チェックの実行
 terraform fmt -check -recursive
 
-# Validate all configurations
+# すべての設定を検証
 terraform validate
 ```
 
-## Architecture Quick Reference
+## アーキテクチャクイックリファレンス
 
-The infrastructure follows a **multi-tier, multi-AZ architecture** pattern with:
-- **VPC** (10.0.0.0/16) spanning 2 Availability Zones
-- **Public Subnets** (10.0.0.0/24, 10.0.2.0/24) for ALB and NAT Gateway
-- **Private Subnets** (10.0.1.0/24, 10.0.3.0/24) for web instances and RDS
-- **Application Load Balancer** distributing traffic to Auto Scaling Group
-- **Multi-AZ RDS MySQL** for database high availability
+インフラストラクチャは、以下の **マルチティア、マルチ AZ アーキテクチャ** パターンに従っています:
+- **VPC** (10.0.0.0/16) - 2つのアベイラビリティゾーンにまたがる
+- **パブリックサブネット** (10.0.0.0/24, 10.0.2.0/24) - ALB と NAT ゲートウェイ用
+- **プライベートサブネット** (10.0.1.0/24, 10.0.3.0/24) - Web インスタンスと RDS 用
+- **Application Load Balancer** - Auto Scaling Group にトラフィックを分散
+- **マルチ AZ RDS MySQL** - データベースの高可用性用
 
-**See [architecture.md](architecture.md) for complete architecture details, traffic flows, and design decisions.**
+**完全なアーキテクチャの詳細、トラフィックフロー、設計上の決定事項については、[architecture.md](architecture.md) を参照してください。**
 
-## Project Structure
+## プロジェクト構造
 
-The Terraform code is organized by resource type and logical components:
+Terraform コードは、リソースタイプと論理コンポーネントによって整理されています:
 
 ```
 .
-├── CLAUDE.md               # This file - development guidance
-├── architecture.md         # Detailed architecture documentation
-├── README.md               # User-facing project documentation
-├── versions.tf             # Terraform and provider version constraints
-├── provider.tf             # AWS provider configuration
-├── backend.tf              # Remote state configuration (S3 + DynamoDB)
-├── variables.tf            # Input variable definitions
-├── outputs.tf              # Output value definitions
-├── terraform.tfvars.example # Example variable values
-├── vpc.tf                  # VPC, Internet Gateway, route tables
-├── subnets.tf              # Subnet definitions across both AZs
-├── nat.tf                  # NAT Gateway and Elastic IP
-├── security_groups.tf      # Security group rules for all tiers
-├── alb.tf                  # Application Load Balancer configuration
-├── launch_template.tf      # EC2 launch template with IAM roles
-├── user_data.sh            # Instance initialization script
-├── asg.tf                  # Auto Scaling Group and scaling policies
-└── rds.tf                  # RDS MySQL Multi-AZ database
+├── CLAUDE.md               # このファイル - 開発ガイダンス
+├── architecture.md         # 詳細なアーキテクチャドキュメント
+├── README.md               # ユーザー向けプロジェクトドキュメント
+├── versions.tf             # Terraform およびプロバイダーのバージョン制約
+├── provider.tf             # AWS プロバイダー設定
+├── backend.tf              # リモートステート設定 (S3 + DynamoDB)
+├── variables.tf            # 入力変数定義
+├── outputs.tf              # 出力値定義
+├── terraform.tfvars        # 変数値 (git無視)
+├── vpc.tf                  # VPC、インターネットゲートウェイ、ルートテーブル
+├── subnets.tf              # 両方の AZ にまたがるサブネット定義
+├── nat.tf                  # NAT ゲートウェイと Elastic IP
+├── security_groups.tf      # 全ティアのセキュリティグループルール
+├── alb.tf                  # Application Load Balancer 設定
+├── launch_template.tf      # IAM ロールを含む EC2 起動テンプレート
+├── user_data.sh            # インスタンス初期化スクリプト
+├── asg.tf                  # Auto Scaling Group とスケーリングポリシー
+├── db_instance.tf          # EC2 インスタンス上の MySQL
+└── db_user_data.sh         # データベース初期化スクリプト
 ```
 
-## Development Guidelines
+## 開発ガイドライン
 
-### Resource Naming Convention
-All resources follow a consistent naming pattern:
-- **Format**: `${var.project_name}-${var.environment}-{resource-type}-{identifier}`
-- **Example**: `myapp-prod-vpc`, `myapp-prod-web-asg`, `myapp-prod-mysql`
-- This naming convention is applied via variables to ensure consistency
+### リソース命名規則
+すべてのリソースは一貫した命名パターンに従います:
+- **形式**: `${var.project_name}-${var.environment}-{resource-type}-{identifier}`
+- **例**: `myapp-prod-vpc`, `myapp-prod-web-asg`, `myapp-prod-mysql`
+- この命名規則は変数を通じて適用され、一貫性を確保します
 
-### Tagging Strategy
-All resources automatically receive these tags (configured in provider.tf):
-- `Project`: Value from `var.project_name`
-- `Environment`: Value from `var.environment`
+### タグ付け戦略
+すべてのリソースには自動的に以下のタグが付与されます (provider.tf で設定):
+- `Project`: `var.project_name` の値
+- `Environment`: `var.environment` の値
 - `ManagedBy`: "Terraform"
-- Individual resources may have additional `Name` tags
+- 個々のリソースには追加の `Name` タグがある場合があります
 
-### State Management
-- **Backend**: S3 + DynamoDB (configured in backend.tf, initially commented out)
-- **Local State**: Never commit `terraform.tfstate` or `terraform.tfvars` to version control
-- **State Locking**: Enabled via DynamoDB to prevent concurrent modifications
-- See backend.tf for setup instructions before enabling remote state
+### ステート管理
+- **バックエンド**: S3 + DynamoDB (backend.tf で設定、初期状態ではコメントアウト)
+- **ローカルステート**: `terraform.tfstate` や `terraform.tfvars` をバージョン管理にコミットしないでください
+- **ステートロック**: 同時変更を防ぐために DynamoDB 経由で有効化
+- リモートステートを有効にする前に、セットアップ手順について backend.tf を参照してください
 
-### Security Best Practices
-- Database passwords must be set via `terraform.tfvars` (marked as sensitive)
-- Consider using AWS Secrets Manager or SSM Parameter Store for production
-- IAM roles are used for EC2 instances (no hardcoded credentials)
-- All RDS storage is encrypted at rest
-- Private subnets have no direct internet access (NAT Gateway for outbound only)
+### セキュリティのベストプラクティス
+- データベースのパスワードは `terraform.tfvars` 経由で設定する必要があります（機密情報としてマーク）
+- 本番環境では AWS Secrets Manager または SSM Parameter Store の使用を検討してください
+- EC2 インスタンスには IAM ロールを使用します（ハードコードされた認証情報は使用しません）
+- すべての RDS ストレージは保存時に暗号化されます
+- プライベートサブネットには直接のインターネットアクセスはありません（アウトバウンドのみ NAT ゲートウェイ経由）
 
-### Important Implementation Notes
+### 重要な実装上の注意
 
-#### CIDR Allocation
+#### CIDR 割り当て
 - VPC: 10.0.0.0/16
-- Public Subnets: 10.0.0.0/24 (AZ-A), 10.0.2.0/24 (AZ-B)
-- Private Subnets: 10.0.1.0/24 (AZ-A), 10.0.3.0/24 (AZ-B)
+- パブリックサブネット: 10.0.0.0/24 (AZ-A), 10.0.2.0/24 (AZ-B)
+- プライベートサブネット: 10.0.1.0/24 (AZ-A), 10.0.3.0/24 (AZ-B)
 
-#### Cost Optimization
-- **Single NAT Gateway** deployed in AZ-A only (not both AZs) to reduce costs (~$32/month savings)
-- For production requiring higher availability, deploy NAT Gateway in both AZs by modifying nat.tf
-- Auto Scaling policies help match capacity to demand
+#### コスト最適化
+- **シングル NAT ゲートウェイ**: コスト削減のため AZ-A にのみデプロイ（〜$32/月の節約）
+- より高い可用性を必要とする本番環境では、nat.tf を変更して両方の AZ に NAT ゲートウェイをデプロイしてください
+- Auto Scaling ポリシーは容量を需要に合わせるのに役立ちます
 
-#### User Data Script
-- Located in `user_data.sh` and referenced by launch_template.tf
-- Uses templatefile() to inject variables (DB endpoint, credentials)
-- Installs Apache HTTP server and creates basic health check page
-- For production, customize this script for your application needs
+#### ユーザーデータスクリプト
+- `user_data.sh` に配置され、launch_template.tf から参照されます
+- templatefile() を使用して変数（DB エンドポイント、認証情報）を注入します
+- Apache HTTP サーバーをインストールし、基本的なヘルスチェックページを作成します
+- 本番環境では、アプリケーションのニーズに合わせてこのスクリプトをカスタマイズしてください
 
-## Documentation Maintenance
+## ドキュメントのメンテナンス
 
-**IMPORTANT**: When making changes to the infrastructure, keep related documentation synchronized:
+**重要**: インフラストラクチャに変更を加える場合は、関連するドキュメントを同期させてください:
 
-### When modifying Terraform code:
+### Terraform コードを変更する場合:
 
-1. **Update architecture.md** if changes affect:
-   - Network topology or IP addressing
-   - Component relationships or data flows
-   - Security group rules or access patterns
-   - High availability or disaster recovery design
-   - New components or services added
+1. **architecture.md を更新**: 変更が以下に影響する場合:
+   - ネットワークトポロジまたは IP アドレス指定
+   - コンポーネントの関係またはデータフロー
+   - セキュリティグループルールまたはアクセスパターン
+   - 高可用性または災害復旧設計
+   - 新しいコンポーネントまたはサービスの追加
 
-2. **Update this file (CLAUDE.md)** if changes affect:
-   - Common commands or workflows
-   - File structure or organization
-   - Development conventions or patterns
-   - Important implementation notes
+2. **このファイル (CLAUDE.md) を更新**: 変更が以下に影響する場合:
+   - 一般的なコマンドまたはワークフロー
+   - ファイル構造または構成
+   - 開発規則またはパターン
+   - 重要な実装上の注意
 
-3. **Update README.md** if changes affect:
-   - Deployment steps or prerequisites
-   - Variable configuration requirements
-   - Cost estimates or resource sizing
-   - User-facing functionality
+3. **README.md を更新**: 変更が以下に影響する場合:
+   - デプロイ手順または前提条件
+   - 変数設定要件
+   - コスト見積もりまたはリソースサイジング
+   - ユーザー向け機能
 
-### Example scenarios requiring documentation updates:
+### ドキュメントの更新が必要なシナリオ例:
 
-- **Adding a new component** (e.g., ElastiCache, CloudFront):
-  - Update architecture.md with component details and integration points
-  - Add relevant Terraform commands to CLAUDE.md if needed
-  - Update README.md with new outputs and usage instructions
+- **新しいコンポーネントの追加** (例: ElastiCache, CloudFront):
+  - architecture.md を更新して、コンポーネントの詳細と統合ポイントを追加
+  - 必要に応じて CLAUDE.md に関連する Terraform コマンドを追加
+  - 新しい出力と使用方法で README.md を更新
 
-- **Changing network layout** (e.g., adding subnet, changing CIDR):
-  - Update CIDR tables in architecture.md
-  - Update CIDR references in CLAUDE.md
-  - Update network diagram if available
+- **ネットワークレイアウトの変更** (例: サブネットの追加、CIDR の変更):
+  - architecture.md の CIDR テーブルを更新
+  - CLAUDE.md の CIDR 参照を更新
+  - 可能であればネットワーク図を更新
 
-- **Modifying security groups**:
-  - Update security group rules section in architecture.md
-  - Update security considerations if access patterns change
+- **セキュリティグループの変更**:
+  - architecture.md のセキュリティグループルールセクションを更新
+  - アクセスパターンが変更される場合はセキュリティ上の考慮事項を更新
 
-- **Adding new variables**:
-  - Update README.md with variable descriptions
-  - Update terraform.tfvars.example with new variables
+- **新しい変数の追加**:
+  - 変数の説明を README.md に追加
+  - terraform.tfvars に新しい変数とコメントを追加
 
-**Before committing changes, verify all three documentation files (CLAUDE.md, architecture.md, README.md) are consistent with the implementation.**
+**変更をコミットする前に、3つのドキュメントファイルすべて (CLAUDE.md, architecture.md, README.md) が実装と整合していることを確認してください。**
