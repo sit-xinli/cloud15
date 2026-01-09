@@ -105,31 +105,6 @@ terraform output alb_dns_url
 
 ブラウザで `alb_dns_url` にアクセスしてアプリケーションを確認してください。
 
-## バックエンドの設定 (本番環境推奨)
-
-チームコラボレーションとステートロックのために、S3バックエンドを設定します:
-
-### 1. S3バケットとDynamoDBテーブルの作成
-
-```bash
-# ステート保存用のS3バケットを作成
-aws s3api create-bucket \
-  --bucket your-terraform-state-bucket \
-  --region us-east-1
-
-# バケットのバージョニングを有効化
-aws s3api put-bucket-versioning \
-  --bucket your-terraform-state-bucket \
-  --versioning-configuration Status=Enabled
-
-# ステートロック用のDynamoDBテーブルを作成
-aws dynamodb create-table \
-  --table-name your-terraform-locks \
-  --attribute-definitions AttributeName=LockID,AttributeType=S \
-  --key-schema AttributeName=LockID,KeyType=HASH \
-  --billing-mode PAY_PER_REQUEST \
-  --region us-east-1
-```
 
 ### 2. バックエンド設定の有効化
 
