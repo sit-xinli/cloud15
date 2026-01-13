@@ -47,6 +47,7 @@ Claude Code のガイダンスについては、[CLAUDE.md](CLAUDE.md)を参照�
    # export AWS_ACCESS_KEY_ID="your-access-key"
    # export AWS_SECRET_ACCESS_KEY="your-secret-key"
    # export AWS_DEFAULT_REGION="us-east-1"
+   # export AWS_SESSION_TOKEN="your-session-token"  # 必要に応じて
    ```
 
 3. **AWSアカウント** 以下のリソースを作成する権限が必要:

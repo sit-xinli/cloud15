@@ -2,8 +2,8 @@
 # Copy this file to terraform.tfvars and update with your values
 
 # Project and Environment
-project_name = "myapp"
-environment  = "prod"
+project_name = "Lab6"
+environment  = "education"
 
 # AWS Region
 aws_region = "us-east-1"
@@ -35,7 +35,7 @@ db_ec2_instance_type = "t3.small"
 db_ec2_volume_size  = 30
 
 # Load Testing - creates instance and starts load testing automatically
-run_load_test          = true
+run_load_test          = false
 test_instance_type     = "t3.small"  # More powerful for aggressive load generation
 load_test_concurrency  = 200         # 200 concurrent connections (very aggressive)
 load_test_duration     = 0           # Continuous load (no breaks)
