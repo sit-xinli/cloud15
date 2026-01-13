@@ -50,6 +50,11 @@ Claude Code のガイダンスについては、[CLAUDE.md](CLAUDE.md)を参照�
    # export AWS_SESSION_TOKEN="your-session-token"  # 必要に応じて
    ```
 
+   ※ すべての設定が正しいことを確認するには:
+   ```bash
+   aws sts get-caller-identity
+   ```
+
 3. **AWSアカウント** 以下のリソースを作成する権限が必要:
    - VPC、サブネット、インターネットゲートウェイ、NATゲートウェイ
    - EC2インスタンス、Auto Scaling Group、起動テンプレート
